@@ -70,7 +70,7 @@ button.stop{border-color:var(--bad);color:var(--bad)}
   <div class="grid"><input id="ecsp" type="number" step="25"><input id="ecdb" type="number" step="10"></div>
   <label>Mix wait (s) / settle after pump (s)</label>
   <div class="grid"><input id="mix" type="number"><input id="settle" type="number"></div>
-  <label>Solution temperature (C)</label>
+  <label>Solution temperature (C) &mdash; fallback when no probe is fitted</label>
   <input id="temp" type="number" step="0.5">
 </div>
 
@@ -119,7 +119,8 @@ async function poll(){
   $('ph').textContent=S.ph==null?'--':S.ph.toFixed(2);
   $('ec').textContent=S.ec==null?'--':Math.round(S.ec);
   $('phv').textContent=S.phVolt==null?'':S.phVolt.toFixed(3)+' V';
-  $('ecv').textContent=S.ecVolt==null?'':S.ecVolt.toFixed(3)+' V';
+  $('ecv').textContent=(S.ecVolt==null?'':S.ecVolt.toFixed(3)+' V')
+    +(S.tempC==null?'':'  '+S.tempC.toFixed(1)+'°C'+(S.tempAuto?'':' set'));
   $('status').textContent=S.status+(S.valid?'':'  (settling)');
   $('pause').textContent=S.paused?'Resume':'Pause';
   band('ph',S.ph,S.phSetpoint,S.phDeadband,4,8);

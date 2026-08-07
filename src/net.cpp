@@ -51,12 +51,18 @@ static void buildState(JsonDocument& d) {
   if (!isnan(r.phVolt)) d["phVolt"] = round(r.phVolt * 1000) / 1000.0;
   if (!isnan(r.ecVolt)) d["ecVolt"] = round(r.ecVolt * 1000) / 1000.0;
 
+  // The temperature compensation is actually using, and whether it came from
+  // the probe or from the hand-entered fallback.
+  d["tempC"]      = round(sensors.tempC() * 10) / 10.0;
+  d["tempAuto"]   = sensors.tempProbeOk() && r.tempValid;
+
   d["valid"]      = r.valid;
   d["status"]     = control.statusText();
   d["paused"]     = control.paused();
   d["running"]    = pumps.running();
   d["remainMs"]   = pumps.runRemainingMs();
   d["floatOk"]    = pumps.floatOk();
+  d["driverOk"]   = pumps.driverOk();
   d["phSetpoint"] = cfg.phSetpoint;
   d["phDeadband"] = cfg.phDeadband;
   d["ecSetpoint"] = cfg.ecSetpoint;
@@ -263,6 +269,15 @@ static void mqttPublishDiscovery() {
     "{\"name\":\"EC\",\"uniq_id\":\"%s\",\"stat_t\":\"%s/state\","
     "\"val_tpl\":\"{{value_json.ec}}\",\"unit_of_meas\":\"uS/cm\","
     "\"stat_cla\":\"measurement\",%s}",
+    uid, baseTopic, dev);
+  mqtt.publish(topic, payload, true);
+
+  snprintf(uid, sizeof(uid), "%s_temp", dn);
+  snprintf(topic, sizeof(topic), "homeassistant/sensor/%s/config", uid);
+  snprintf(payload, sizeof(payload),
+    "{\"name\":\"Temperature\",\"uniq_id\":\"%s\",\"stat_t\":\"%s/state\","
+    "\"val_tpl\":\"{{value_json.tempC}}\",\"unit_of_meas\":\"\\u00b0C\","
+    "\"dev_cla\":\"temperature\",\"stat_cla\":\"measurement\",%s}",
     uid, baseTopic, dev);
   mqtt.publish(topic, payload, true);
 

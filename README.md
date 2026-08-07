@@ -1,7 +1,8 @@
 # dosr — Mini Feeder
 
-Four-channel 12 V dosing controller on a Seeed XIAO ESP32-C5, with an OLED +
-rotary encoder menu, a phone-friendly web panel, and Home Assistant over MQTT.
+Four-channel 12 V dosing controller on a Seeed XIAO ESP32-C5, with a 1.8"
+colour TFT + rotary encoder menu, a phone-friendly web panel, and Home
+Assistant over MQTT.
 
 Each pump runs in one of four modes, switchable per pump at runtime:
 
@@ -13,7 +14,7 @@ Each pump runs in one of four modes, switchable per pump at runtime:
 | Auto | Doses when pH or EC drifts outside its deadband |
 
 Pump names are set from the web page. Naming things with a rotary encoder is
-miserable, so the OLED only displays them.
+miserable, so the display only shows them.
 
 ## Build
 
@@ -83,9 +84,9 @@ test/                   unit tests — empty for now
 | `main` | Boot, I²C scan, watchdog, `loop()` ordering |
 | `settings` | `Settings` struct, NVS load/save, debounced writes |
 | `pumps` | Dose queue, timing, rate limits, float-switch abort |
-| `sensors` | ADS1115 sampling, pH/EC conversion, calibration |
+| `sensors` | ADS1115 sampling, DS18B20 temperature, pH/EC conversion, calibration |
 | `control` | Scheduled and closed-loop dosing decisions |
-| `ui` | SSD1306 menu, rotary encoder, toasts |
+| `ui` | ST7735 menu, rotary encoder, toasts |
 | `net` | WiFi/AP, HTTP API, MQTT, Home Assistant discovery |
 | `webpage` | The web panel, a `PROGMEM` string in `include/webpage.h` |
 
@@ -102,28 +103,57 @@ There is no filesystem image — the web page is compiled into flash, so
               └─ MOSFET drains ─ 4 pumps
 ```
 
+All eleven exposed pads are spoken for, which is why the pump gates and the
+float switch sit on an I²C expander rather than on the MCU — the SPI display
+needs four pins and there is nowhere else to find them. `docs/BOM.md` §2 shows
+the arithmetic.
+
 | Function | Pad | GPIO |
 |---|---|---|
 | Encoder switch | D0 | 1 |
 | Encoder A | D1 | 0 |
 | Encoder B | D2 | 25 |
-| Pump 1 gate | D3 | 7 |
+| TFT CS | D3 | 7 |
 | I²C SDA | D4 | 23 |
 | I²C SCL | D5 | 24 |
 | *(free — UART0 TX)* | D6 | 11 |
-| Pump 2 gate | D7 | 12 |
-| Pump 3 gate | D8 | 8 |
-| Pump 4 gate | D9 | 9 |
-| Float switch | D10 | 10 |
+| TFT DC | D7 | 12 |
+| TFT SCK | D8 | 8 |
+| DS18B20 temperature | D9 | 9 |
+| TFT MOSI | D10 | 10 |
 
-I²C devices: SSD1306 OLED at `0x3C`, ADS1115 at `0x48`. The bus runs at
-100 kHz — 400 kHz does not survive jumper wires, and the symptom is
+On the MCP23017 at `0x20`:
+
+| Function | Pin |
+|---|---|
+| Pump 1–4 gates | GPA0–GPA3 |
+| Float switch | GPB0 |
+
+D8 and D10 are the variant's native SPI SCK and MOSI, so the peripheral needs
+no remapping. `SPI.begin()` is called with `miso = -1`; the core skips
+`spiAttachMISO()` for a negative pin, which is what keeps GPIO9 free for the
+temperature probe. TFT `RST` ties to 3V3 and `BLK` to 3V3.
+
+I²C devices: MCP23017 at `0x20`, ADS1115 at `0x48`. The bus runs at 100 kHz —
+400 kHz does not survive jumper wires, and the symptom is
 `ESP_ERR_INVALID_STATE` rather than a clean timeout.
+
+The display is SPI, not I²C. SPI has no acknowledge, so unlike the I²C parts
+there is no way to tell a wired display from an absent one — `ui.begin()`
+reports what it configured, not what answered.
+
+The DS18B20 needs a **4.7 kΩ pull-up from D9 to 3V3** — it is open-drain and
+nothing else holds that line high. Conversions run asynchronously at 11-bit
+resolution (0.125 °C, ~375 ms): `sensors.tick()` starts one, returns, and
+collects the result on a later pass, because blocking `loop()` for a
+conversion would eat into pump timing. Readings of exactly 85 °C are discarded
+— that is the DS18B20's power-on default, and it looks like a plausible
+reading otherwise.
 
 ### No level shifter
 
-The ADS1115 and the OLED both run at 3.3 V, straight onto the ESP32's bus with
-no shifter. This removes the most common source of I²C trouble on this build.
+Every I²C device here runs at 3.3 V, straight onto the ESP32's bus with no
+shifter. This removes the most common source of I²C trouble on this build.
 
 The XIAO ESP32-C5 exposes only one ADC pin on the edge headers, which is why
 the pH and EC boards go through an ADS1115 instead of the chip's own ADC.
@@ -145,8 +175,14 @@ stays in the sensor's own 0–5 V domain. If you later power the ADS1115 from
 **Do not skip these:**
 
 - 100 kΩ pull-down from every MOSFET gate to GND, plus 100 Ω in series with
-  the gate. Without the pull-down a pump can run for a few hundred
-  milliseconds at power-up, which is a real dose into your reservoir.
+  the gate. These now carry more weight than they used to. With the gates on
+  an expander, firmware cannot drive them low until I²C is up, so from reset
+  until `pumps.begin()` the pull-downs are the *only* thing holding the pumps
+  off — and they are also what makes the deliberate reset above a safe
+  response to a dead bus.
+- **An MCP23017, not a PCF8574.** The MCP wakes with every pin a
+  high-impedance input, so the pull-downs win. A PCF8574's quasi-bidirectional
+  outputs wake *high*, which would start all four pumps at power-up.
 - Flyback diode across each pump, cathode to +12 V (1N5822 or 1N4007).
 - Logic-level MOSFETs — AO3400, IRLB8721, or a ready-made 4-channel module.
   A plain IRF540N will not turn on properly from 3.3 V.
@@ -186,9 +222,14 @@ to settle, then Menu → Sensors → *Cal in pH 7.00*. Rinse, repeat in pH 4.00.
 Calibration is refused while a pump is running or settling.
 
 EC is single-point: put the probe in a known standard, set *EC standard* to
-that value (1413 µS/cm is the usual one), then *Cal EC now*. Set *Solution C*
-to your reservoir temperature — the compensation is the standard 2 %/°C
-approximation, so a wrong temperature skews every reading.
+that value (1413 µS/cm is the usual one), then *Cal EC now*.
+
+Temperature comes from the DS18B20 on D9 when one is fitted — Menu → Sensors
+shows it as *Probe temp*, and calibration records the temperature it was done
+at. With no probe the compensation falls back to *Manual C*, which you then
+have to set to your reservoir temperature by hand. Either way the compensation
+is the standard 2 %/°C approximation, so a wrong temperature skews every
+reading.
 
 ## Safety behaviour
 
@@ -200,7 +241,17 @@ approximation, so a wrong temperature skews every reading.
   Without that wait the loop badly overshoots.
 - Sensor readings are marked invalid while pumps run and for `settleSec`
   after. Auto mode ignores invalid and stale (>30 s) readings.
-- Optional float switch on D10 aborts a dose in progress and blocks new ones.
+- Optional float switch on MCP23017 GPB0 aborts a dose in progress and blocks
+  new ones. It is polled at 20 Hz rather than read on demand, since it now sits
+  behind the I²C bus — 50 ms of latency against a dose measured in seconds.
+- Every gate write is read back. If one does not take, the write is retried;
+  if a *stop* keeps failing for 2 s the firmware resets the board deliberately,
+  because the MCP23017 wakes with all pins high-impedance and the 100 kΩ gate
+  pull-downs then cut the pumps. This is the one failure the firmware cannot
+  otherwise escape: the motor is running and the only path to its gate is a bus
+  that has stopped answering.
+- If the MCP23017 does not answer at boot, `driverOk()` stays false and every
+  dose request is refused with `pump driver offline`. Nothing can run.
 - Task watchdog resets the board if `loop()` stalls for 15 s.
 - MQTT socket timeout is 4 s, deliberately under the watchdog. PubSubClient
   defaults to 15 s, which turns an unreachable broker into a reboot loop.
@@ -212,7 +263,7 @@ approximation, so a wrong temperature skews every reading.
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/api/state` | live readings, status, per-pump totals |
+| GET | `/api/state` | live readings, temperature, status, per-pump totals |
 | GET | `/api/settings` | full config; passwords are never returned |
 | POST | `/api/settings` | JSON body, values clamped server-side |
 | POST | `/api/dose?pump=0&ml=5` | `ml` optional, defaults to configured dose |
@@ -235,8 +286,8 @@ Published: `minifeeder/state` (JSON, every 5 s), `minifeeder/status`
 Subscribed: `minifeeder/pump/<0-3>/dose` (payload = ml, empty for the
 configured dose), `minifeeder/pause` (`1`/`0`), `minifeeder/stop`.
 
-Home Assistant discovery is published automatically on connect: pH and EC
-sensors, a status sensor, a dose button and a total-dosed sensor per pump,
+Home Assistant discovery is published automatically on connect: pH, EC and
+temperature sensors, a status sensor, a dose button and a total-dosed sensor per pump,
 and a "Dosing paused" switch, all under one device.
 
 ## If it will not boot
@@ -264,8 +315,6 @@ problem, not a firmware one.
 
 - Scheduling is interval-based from boot, not wall-clock. That survives a WiFi
   outage but means "dose at 06:00" needs NTP and an RTC check in `control.cpp`.
-- EC temperature is entered by hand. A DS18B20 on a spare pin and real
-  compensation would be the single biggest accuracy win.
 - pH and EC probes in the same solution cross-talk through the liquid. If
   readings jump when both are submerged, power the EC board from a spare
   MOSFET channel and switch it on only for its own read window.

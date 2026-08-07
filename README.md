@@ -276,4 +276,4 @@ problem, not a firmware one.
 
 ## Licence
 
-MIT — see [LICENSE](LICENSE).
+GPLv3 — see [LICENSE](LICENSE).

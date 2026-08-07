@@ -84,7 +84,7 @@ test/                   unit tests — empty for now
 | `main` | Boot, I²C scan, watchdog, `loop()` ordering |
 | `settings` | `Settings` struct, NVS load/save, debounced writes |
 | `pumps` | Dose queue, timing, rate limits, float-switch abort |
-| `sensors` | ADS1115 sampling, pH/EC conversion, calibration |
+| `sensors` | ADS1115 sampling, DS18B20 temperature, pH/EC conversion, calibration |
 | `control` | Scheduled and closed-loop dosing decisions |
 | `ui` | ST7735 menu, rotary encoder, toasts |
 | `net` | WiFi/AP, HTTP API, MQTT, Home Assistant discovery |
@@ -119,7 +119,7 @@ the arithmetic.
 | *(free — UART0 TX)* | D6 | 11 |
 | TFT DC | D7 | 12 |
 | TFT SCK | D8 | 8 |
-| DS18B20 *(reserved)* | D9 | 9 |
+| DS18B20 temperature | D9 | 9 |
 | TFT MOSI | D10 | 10 |
 
 On the MCP23017 at `0x20`:
@@ -141,6 +141,14 @@ I²C devices: MCP23017 at `0x20`, ADS1115 at `0x48`. The bus runs at 100 kHz —
 The display is SPI, not I²C. SPI has no acknowledge, so unlike the I²C parts
 there is no way to tell a wired display from an absent one — `ui.begin()`
 reports what it configured, not what answered.
+
+The DS18B20 needs a **4.7 kΩ pull-up from D9 to 3V3** — it is open-drain and
+nothing else holds that line high. Conversions run asynchronously at 11-bit
+resolution (0.125 °C, ~375 ms): `sensors.tick()` starts one, returns, and
+collects the result on a later pass, because blocking `loop()` for a
+conversion would eat into pump timing. Readings of exactly 85 °C are discarded
+— that is the DS18B20's power-on default, and it looks like a plausible
+reading otherwise.
 
 ### No level shifter
 
@@ -214,9 +222,14 @@ to settle, then Menu → Sensors → *Cal in pH 7.00*. Rinse, repeat in pH 4.00.
 Calibration is refused while a pump is running or settling.
 
 EC is single-point: put the probe in a known standard, set *EC standard* to
-that value (1413 µS/cm is the usual one), then *Cal EC now*. Set *Solution C*
-to your reservoir temperature — the compensation is the standard 2 %/°C
-approximation, so a wrong temperature skews every reading.
+that value (1413 µS/cm is the usual one), then *Cal EC now*.
+
+Temperature comes from the DS18B20 on D9 when one is fitted — Menu → Sensors
+shows it as *Probe temp*, and calibration records the temperature it was done
+at. With no probe the compensation falls back to *Manual C*, which you then
+have to set to your reservoir temperature by hand. Either way the compensation
+is the standard 2 %/°C approximation, so a wrong temperature skews every
+reading.
 
 ## Safety behaviour
 
@@ -250,7 +263,7 @@ approximation, so a wrong temperature skews every reading.
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/api/state` | live readings, status, per-pump totals |
+| GET | `/api/state` | live readings, temperature, status, per-pump totals |
 | GET | `/api/settings` | full config; passwords are never returned |
 | POST | `/api/settings` | JSON body, values clamped server-side |
 | POST | `/api/dose?pump=0&ml=5` | `ml` optional, defaults to configured dose |
@@ -273,8 +286,8 @@ Published: `minifeeder/state` (JSON, every 5 s), `minifeeder/status`
 Subscribed: `minifeeder/pump/<0-3>/dose` (payload = ml, empty for the
 configured dose), `minifeeder/pause` (`1`/`0`), `minifeeder/stop`.
 
-Home Assistant discovery is published automatically on connect: pH and EC
-sensors, a status sensor, a dose button and a total-dosed sensor per pump,
+Home Assistant discovery is published automatically on connect: pH, EC and
+temperature sensors, a status sensor, a dose button and a total-dosed sensor per pump,
 and a "Dosing paused" switch, all under one device.
 
 ## If it will not boot
@@ -302,8 +315,6 @@ problem, not a firmware one.
 
 - Scheduling is interval-based from boot, not wall-clock. That survives a WiFi
   outage but means "dose at 06:00" needs NTP and an RTC check in `control.cpp`.
-- EC temperature is entered by hand. A DS18B20 on a spare pin and real
-  compensation would be the single biggest accuracy win.
 - pH and EC probes in the same solution cross-talk through the liquid. If
   readings jump when both are submerged, power the EC board from a spare
   MOSFET channel and switch it on only for its own read window.

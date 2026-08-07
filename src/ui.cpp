@@ -257,7 +257,14 @@ static void buildSensors() {
 
   addItem("EC standard", K_FLOAT, &ecCalStandard, 100, 20000, 10);
   addItem("Cal EC now",  K_ACTION, nullptr, 0,0,0, nullptr,0, A_CAL_EC);
-  addItem("Solution C",  K_FLOAT, &cfg.tempC, 5, 45, 0.5f);
+
+  // With a probe attached "Solution C" is only the fallback, so show what the
+  // compensation is actually using and where it came from.
+  if (sensors.tempProbeOk() && !isnan(r.tempC)) snprintf(buf, sizeof(buf), "%.1fC", r.tempC);
+  else strlcpy(buf, sensors.tempProbeOk() ? "--" : "no probe", sizeof(buf));
+  addItem("Probe temp", K_INFO, nullptr, 0,0,0, nullptr,0,0, buf);
+
+  addItem("Manual C",    K_FLOAT, &cfg.tempC, 5, 45, 0.5f);
   addItem("Settle sec",  K_U16,   &cfg.settleSec, SETTLE_MIN_SEC, 120, 1);
 }
 

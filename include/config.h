@@ -18,7 +18,7 @@
                            // D6 / GPIO11 is UART0 TX - left free for boot logs
 #define PIN_TFT_DC   D7    // GPIO12 - data/command select
 #define PIN_TFT_SCLK D8    // GPIO8  - native SPI SCK
-#define PIN_DS18B20  D9    // GPIO9  - reserved, driver not implemented yet
+#define PIN_DS18B20  D9    // GPIO9  - one-wire solution temperature probe
 #define PIN_TFT_MOSI D10   // GPIO10 - native SPI MOSI
 
 // SPI.begin() is called with miso = -1. The core skips spiAttachMISO() when

@@ -5,13 +5,73 @@
 #include "pumps.h"
 #include <Wire.h>
 #include <Adafruit_ADS1X15.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 
 Sensors sensors;
 
 static Adafruit_ADS1115 ads;
 static const uint32_t READ_PERIOD_MS = 1000;
 
+static OneWire           oneWire(PIN_DS18B20);
+static DallasTemperature ds(&oneWire);
+
+static const uint32_t TEMP_PERIOD_MS = 5000;   // solution temperature drifts slowly
+static const uint8_t  DS_RESOLUTION  = 11;     // 0.125 C, and a 375 ms conversion
+static const uint32_t DS_CONV_MS     = 400;    // 11-bit conversion plus margin
+
+void Sensors::tempBegin() {
+  ds.begin();
+  if (ds.getDeviceCount() == 0 || !ds.getAddress(_dsAddr, 0)) {
+    Serial.println(F("[temp] no DS18B20 on D9 - using the hand-entered figure"));
+    _tempOk = false;
+    return;
+  }
+  ds.setResolution(_dsAddr, DS_RESOLUTION);
+  // Never block loop() waiting for a conversion; tempTick() collects it later.
+  ds.setWaitForConversion(false);
+  _tempOk = true;
+  Serial.println(F("[temp] DS18B20 ready"));
+}
+
+void Sensors::tempTick() {
+  if (!_tempOk) return;
+  uint32_t now = millis();
+
+  if (!_converting) {
+    if ((int32_t)(now - _tempNext) < 0) return;
+    ds.requestTemperatures();
+    _converting = true;
+    _convDoneAt = now + DS_CONV_MS;
+    return;
+  }
+
+  if ((int32_t)(now - _convDoneAt) < 0) return;
+  _converting = false;
+  _tempNext   = now + TEMP_PERIOD_MS;
+
+  float t = ds.getTempC(_dsAddr);
+  // DEVICE_DISCONNECTED_C is -127. The range check also rejects the 85 C
+  // power-on default a DS18B20 reports when it is read before it has ever
+  // converted, which would otherwise look like a plausible reading.
+  if (t <= DEVICE_DISCONNECTED_C || t < -40.0f || t >= 85.0f) {
+    _last.tempValid = false;
+    _last.tempC     = NAN;
+    return;
+  }
+  _last.tempC     = t;
+  _last.tempValid = true;
+}
+
+float Sensors::tempC() const {
+  return _last.tempValid ? _last.tempC : cfg.tempC;
+}
+
 bool Sensors::begin() {
+  // Independent of the ADC - the probe is on its own one-wire pin, so it comes
+  // up even when there is no ADS1115 to read pH and EC with.
+  tempBegin();
+
   // Probe first. Without this, a missing ADS1115 produces a wall of
   // i2cWrite() errors from inside the library.
   if (!i2cProbe(ADDR_ADS1115)) {
@@ -71,7 +131,7 @@ float Sensors::phFromVolts(float v) const {
 float Sensors::ecFromVolts(float v) const {
   if (isnan(v)) return NAN;
   float raw = v * cfg.ecCalFactor;
-  float comp = 1.0f + 0.02f * (cfg.tempC - 25.0f);   // ~2 %/C, the usual approximation
+  float comp = 1.0f + 0.02f * (tempC() - 25.0f);     // ~2 %/C, the usual approximation
   if (comp < 0.5f) comp = 0.5f;
   float ec = raw / comp;
   if (ec < 0) ec = 0;
@@ -80,6 +140,7 @@ float Sensors::ecFromVolts(float v) const {
 }
 
 void Sensors::tick() {
+  tempTick();               // runs with or without an ADC
   if (!_present) return;
   if ((int32_t)(millis() - _nextRead) < 0) return;
   _nextRead = millis() + READ_PERIOD_MS;
@@ -121,10 +182,10 @@ bool Sensors::calibrateEc(float knownUsPerCm) {
   float v = readChannelVolts(ADS_CH_EC, 15);
   if (isnan(v) || v < 0.02f) return false;   // probe probably not in solution
 
-  float comp = 1.0f + 0.02f * (cfg.tempC - 25.0f);
+  float comp = 1.0f + 0.02f * (tempC() - 25.0f);
   cfg.ecCalFactor = (knownUsPerCm * comp) / v;
   settingsMarkDirty();
-  Serial.printf("[cal] EC %.0f uS/cm at %.4f V -> factor %.1f\n",
-                knownUsPerCm, v, cfg.ecCalFactor);
+  Serial.printf("[cal] EC %.0f uS/cm at %.4f V, %.1f C -> factor %.1f\n",
+                knownUsPerCm, v, tempC(), cfg.ecCalFactor);
   return true;
 }

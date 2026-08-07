@@ -20,7 +20,7 @@ and ranges from the drivers that use them.
 | 1.1 | **Seeed Studio XIAO ESP32-C5** | 1 | `board = seeed_xiao_esp32c5` | ✅ matches firmware |
 | 1.2 | **pH sensor module** + BNC electrode probe, pH 0–14 | 1 | `ADS_CH_PH = 0` | ✅ matches firmware |
 | 1.3 | **Peristaltic dosing pump** — select the **12 V** variant | 4 | `MCP_PUMP_PINS[4]` | ✅ matches firmware |
-| 1.4 | **TDS sensor module**, analog out, bundled **DS18B20** temp probe | 1 | `ADS_CH_EC = 1` | ⚠️ analog side works as-is; DS18B20 unimplemented |
+| 1.4 | **TDS sensor module**, analog out, bundled **DS18B20** temp probe | 1 | `ADS_CH_EC = 1`, `PIN_DS18B20` | ✅ both halves driven |
 | 1.5 | **1.8″ TFT + EC11 rotary encoder combo module**, SPI | 1 | `PIN_TFT_*` | ✅ `ui.cpp` now drives ST7735 |
 
 The pump listing also sells 3 V, 6 V and 24 V — pick 12 V to match the PSU and
@@ -147,6 +147,7 @@ sensor board lands on the pH reading as noise.
 | ADS1115 breakout | 1 | 16-bit I²C, address **0x48** (ADDR→GND), run at **3.3 V** | `ADDR_ADS1115`, `GAIN_ONE`, `RATE_ADS1115_128SPS` |
 | Divider resistors | 4 | **10 kΩ**, two per analog channel | `ADC_DIVIDER_RATIO = 2.0f` |
 | I²C pull-ups | 0–2 | 4.7 kΩ to 3.3 V, only if your breakouts lack them | `I2C_CLOCK_HZ` = 100 kHz |
+| DS18B20 pull-up | 1 | **4.7 kΩ from D9 to 3V3** — required, the probe is open-drain | `PIN_DS18B20` |
 
 Both sensor boards run at 5 V; the ADS1115 runs at 3.3 V, so each output goes
 through a 2:1 divider into A0 / A1:
@@ -176,12 +177,13 @@ probe; "TDS in ppm" is just scaled EC. Calibrate `ecCalFactor` against a
 1413 µS/cm standard and `ecFromVolts()` reads µS/cm directly, exactly as
 written. Nothing to change.
 
-**DS18B20 — not implemented.** Solution temperature is currently typed in by
-hand (menu → Sensors → *Solution C*, `cfg.tempC`) and feeds the 2 %/°C
-approximation in `ecFromVolts()`. Wiring the bundled probe needs a OneWire
-driver, one GPIO and a 4.7 kΩ pull-up. The project README already names this as
-the single biggest available accuracy win, so the part is well chosen — it just
-needs the code.
+**DS18B20 — implemented.** The bundled probe drives the 2 %/°C compensation in
+`ecFromVolts()` automatically. `cfg.tempC` survives as the fallback, relabelled
+*Manual C* in the menu, and is what gets used when no probe answers — unplugging
+the probe degrades to the old behaviour rather than failing. Conversions are
+asynchronous so nothing blocks `loop()`. Needs a **4.7 kΩ pull-up from D9 to
+3V3**. Adds `paulstoffregen/OneWire` and `milesburton/DallasTemperature` to
+`lib_deps`, and a temperature entity to Home Assistant discovery.
 
 **1.8″ TFT — `ui.cpp` rewritten.** It is an SPI ST7735 (128×160, 16-bit
 colour) where the firmware drove an I²C SSD1306 (128×64, mono). What changed:

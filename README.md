@@ -27,9 +27,12 @@ pio device monitor               # 115200 baud
 pio run -t clean
 ```
 
-The first build downloads the RISC-V toolchain and the Arduino-ESP32
-framework — a few hundred MB, and several minutes. Everything after that is
-incremental.
+The first build pulls the RISC-V toolchain and the Arduino-ESP32 framework —
+a few hundred MB of downloads, around 2.5 GB unpacked, and several minutes.
+Everything after that is incremental. It needs to reach both `github.com` and
+`*.platformio.org`; behind a restrictive egress proxy the give-away is the
+build dying on `tool-scons`, which is served only from the PlatformIO
+registry.
 
 `platformio.ini` uses the [pioarduino] fork of the ESP32 platform, not the
 official `espressif32` one and not `platform-seeedboards`. That is deliberate:

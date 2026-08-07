@@ -1,0 +1,29 @@
+; Machine-local overrides. Copy to platformio_override.ini (gitignored) and
+; uncomment what you need. PlatformIO merges this on top of platformio.ini
+; automatically - nothing else has to reference it.
+
+[platformio]
+; Windows only. The esp32-arduino-libs package ships Matter headers whose
+; paths blow past the 260-character limit under
+; C:\Users\<name>\.platformio, and the build fails with file-not-found on
+; headers that are plainly there. A short core_dir fixes it.
+; Leave this out entirely on Linux and macOS.
+;core_dir = C:/pio
+
+[env:seeed_xiao_esp32c5]
+; Pin the port instead of letting PlatformIO guess.
+;upload_port  = COM7
+;monitor_port = COM7
+
+; build_flags here REPLACES the list in platformio.ini, so re-inject it with
+; ${env.build_flags} first and add your own after. Later -D wins, which is how
+; the CDC flag below overrides the default of 1.
+;
+;   -DARDUINO_USB_CDC_ON_BOOT=0   Serial moves off USB-C to UART0 TX (D6).
+;                                 See README, "If it will not boot".
+;   -DCORE_DEBUG_LEVEL=4          Chattier framework logs.
+;
+;build_flags =
+;	${env.build_flags}
+;	-DARDUINO_USB_CDC_ON_BOOT=0
+;	-DCORE_DEBUG_LEVEL=4

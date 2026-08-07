@@ -42,8 +42,8 @@ static uint8_t i2cScan() {
   for (uint8_t a = 1; a < 127; a++) {
     if (i2cProbe(a)) {
       Serial.printf("[i2c]   device at 0x%02X%s\n", a,
-                    a == ADDR_OLED    ? "  (OLED)" :
-                    a == ADDR_ADS1115 ? "  (ADS1115)" : "");
+                    a == ADDR_MCP23017 ? "  (MCP23017, pump gates)" :
+                    a == ADDR_ADS1115  ? "  (ADS1115)" : "");
       found++;
     }
   }
@@ -57,9 +57,12 @@ static uint8_t i2cScan() {
 }
 
 void setup() {
-  // Gates low first, before anything can go wrong.
-  pumps.begin();
-
+  // The gates used to be driven low here, on the first line of setup(), before
+  // anything else could go wrong. They live on an I2C expander now, so that is
+  // no longer possible - the bus has to come up first. What holds the pumps off
+  // in the meantime is hardware: the MCP23017 wakes with every pin a
+  // high-impedance input and the 100k gate pull-downs do the rest. Nothing
+  // between reset and pumps.begin() below can turn a pump on.
   Serial.begin(115200);
   uint32_t t0 = millis();
   while (!Serial && millis() - t0 < 1500) { delay(10); }
@@ -73,17 +76,22 @@ void setup() {
     Serial.println(F("[boot] converter into the 5V pin at the same time."));
   }
 
+  // Must precede pumps.begin(), which reads cfg.floatActiveLow.
   settingsBegin();
 
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
   Wire.setClock(I2C_CLOCK_HZ);
-  delay(50);                 // let the bus and any shifter settle
+  delay(50);                 // let the bus settle
   i2cScan();
 
-  // Both of these probe their address first and return false if absent, so a
-  // missing device logs one line instead of flooding the console with
-  // i2cWrite() failures.
-  if (!ui.begin())      Serial.println(F("[boot] no display, running headless"));
+  // First thing after the bus is up: claim the gates and drive them low.
+  pumps.begin();
+
+  // The ADC probes its address first and returns false if absent, so a missing
+  // device logs one line instead of flooding the console with i2cWrite()
+  // failures. The display is on SPI, which has no acknowledge, so there is no
+  // equivalent check - ui.begin() reports what it configured, not what replied.
+  ui.begin();
   if (!sensors.begin()) Serial.println(F("[boot] no ADC, sensors disabled"));
 
   control.begin();

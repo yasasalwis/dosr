@@ -6,12 +6,10 @@ Every line carries a **Firmware ref** so it can be checked against the code
 rather than taken on trust — pin names come from `include/config.h`, addresses
 and ranges from the drivers that use them.
 
-> ### ⚠️ Read section 2 before ordering anything else
->
-> The parts confirmed in section 1 **cannot all be wired to a XIAO ESP32-C5 at
-> once** — they need 14 GPIOs and the board exposes 11. Section 2 works the
-> budget and gives two ways out. Two of the parts also do not match what the
-> firmware currently drives; section 6 covers the code that implies.
+> **Decided:** the pump gates and the float switch move onto an **MCP23017**
+> I²C expander, freeing four MCU pins for the SPI display. Section 2 shows the
+> arithmetic. The firmware has been updated to match — `pumps.cpp` drives the
+> expander, `ui.cpp` drives the ST7735.
 
 ---
 
@@ -21,9 +19,9 @@ and ranges from the drivers that use them.
 |---|---|---|---|---|
 | 1.1 | **Seeed Studio XIAO ESP32-C5** | 1 | `board = seeed_xiao_esp32c5` | ✅ matches firmware |
 | 1.2 | **pH sensor module** + BNC electrode probe, pH 0–14 | 1 | `ADS_CH_PH = 0` | ✅ matches firmware |
-| 1.3 | **Peristaltic dosing pump** — select the **12 V** variant | 4 | `PUMP_PINS[4]` | ✅ matches firmware |
+| 1.3 | **Peristaltic dosing pump** — select the **12 V** variant | 4 | `MCP_PUMP_PINS[4]` | ✅ matches firmware |
 | 1.4 | **TDS sensor module**, analog out, bundled **DS18B20** temp probe | 1 | `ADS_CH_EC = 1` | ⚠️ analog side works as-is; DS18B20 unimplemented |
-| 1.5 | **1.8″ TFT + EC11 rotary encoder combo module**, SPI | 1 | — | ❌ firmware drives an I²C SSD1306, not SPI TFT |
+| 1.5 | **1.8″ TFT + EC11 rotary encoder combo module**, SPI | 1 | `PIN_TFT_*` | ✅ `ui.cpp` now drives ST7735 |
 
 The pump listing also sells 3 V, 6 V and 24 V — pick 12 V to match the PSU and
 the MOSFET drive. If it offers a tubing choice, BPT outlasts silicone under
@@ -61,16 +59,36 @@ are SCK=GPIO8 (**D8**), MISO=GPIO9 (**D9**), MOSI=GPIO10 (**D10**), SS=GPIO7
 matrix can route SPI to any pin, so this is not fatal, but nothing is free to
 route it *to*.
 
-### Option A — I²C GPIO expander for the pump gates
+### Chosen: I²C GPIO expander for the pump gates
 
-Move the four MOSFET gates onto an **MCP23017**, freeing D3, D7, D8, D9.
+The four MOSFET gates and the float switch move onto an **MCP23017**, freeing
+D3, D7, D8, D9 and D10.
 
 | Function | Pins |
 |---|---:|
-| Encoder 3 · I²C 2 · TFT 4 · DS18B20 1 · float 1 | **11** |
+| Encoder 3 · I²C 2 · TFT 4 · DS18B20 1 · UART0 TX 1 | **11** |
 
-Fits exactly. Keeps the TFT you bought. Costs one extra part and a rewrite of
-`ui.cpp` (section 6).
+Fits exactly, keeps the TFT, and keeps the D6 debug line. Final map:
+
+| Pad | GPIO | Function |
+|---|---|---|
+| D0 | 1 | Encoder switch |
+| D1 | 0 | Encoder A |
+| D2 | 25 | Encoder B |
+| D3 | 7 | TFT CS *(native SPI SS)* |
+| D4 | 23 | I²C SDA |
+| D5 | 24 | I²C SCL |
+| D6 | 11 | *(free — UART0 TX)* |
+| D7 | 12 | TFT DC |
+| D8 | 8 | TFT SCK *(native)* |
+| D9 | 9 | DS18B20 *(reserved)* |
+| D10 | 10 | TFT MOSI *(native)* |
+
+MCP23017 `0x20`: GPA0–GPA3 = pump gates, GPB0 = float switch.
+
+D9 stays free because `SPI.begin()` is called with `miso = -1` — the core
+skips `spiAttachMISO()` for a negative pin, so the peripheral never claims
+GPIO9. TFT `RST` and `BLK` tie to 3V3.
 
 **Use an MCP23017, not a PCF8574.** The MCP23017 powers up with every pin as a
 high-Z input, so the 100 kΩ gate pull-downs hold the pumps off through reset —
@@ -79,20 +97,16 @@ power up **high**, which would turn all four pumps on at power-up.
 
 The honest cost: `pumps.stopAll()` stops being a direct GPIO write and becomes
 an I²C transaction, so a wedged bus means you cannot stop a running pump. The
-15 s task watchdog bounds it — on reset the expander returns to high-Z and the
-pull-downs cut the pumps — but the failure window is real and it is new.
+firmware handles this explicitly rather than leaving it to the watchdog — every
+gate write is read back, and if a *stop* keeps failing for 2 s it resets the
+board on purpose, which returns the expander to high-Z and lets the pull-downs
+cut the pumps. Bounded, but a failure window that did not exist before.
 
-### Option B — keep the I²C OLED the firmware already drives
+### Rejected: keep the I²C OLED
 
-Buy a **128×64 SSD1306** (~USD 3) and use only the **encoder half** of the
-combo module. The TFT goes unused.
-
-| Function | Pins |
-|---|---:|
-| Encoder 3 · pumps 4 · I²C 2 (OLED + ADS1115 share) · DS18B20 1 · float 1 | **11** |
-
-Also fits exactly, and needs **no display firmware work at all** — `ui.cpp`
-already targets exactly this part.
+A 128×64 SSD1306 plus the encoder half of the combo module also fits exactly
+and needs no display firmware work, but shelves the TFT. Recorded here only so
+the trade-off is not re-litigated later.
 
 ---
 
@@ -104,7 +118,7 @@ already targets exactly this part.
 | Gate pull-down resistor | 4 | **100 kΩ**, gate → GND | **Do not omit.** Holds gates low through reset and boot, before any code runs. Without it a pump can run a few hundred ms at power-up — a real uncommanded dose |
 | Gate series resistor | 4 | **100 Ω**, driver → gate | Limits gate-charge current spikes |
 | Flyback diode | 4 | **1N5822** Schottky or 1N4007, cathode to +12 V | Clamps the motor's inductive kick |
-| MCP23017 I²C expander | 0–1 | **Option A only** | See section 2 |
+| MCP23017 I²C expander | 1 | **Required** | See section 2. Not a PCF8574 — its outputs wake high and would start every pump at power-up |
 
 A ready-made 4-channel logic-level MOSFET module replaces the first four rows —
 but verify it actually has gate pull-downs and genuinely logic-level FETs.
@@ -169,23 +183,23 @@ driver, one GPIO and a 4.7 kΩ pull-up. The project README already names this as
 the single biggest available accuracy win, so the part is well chosen — it just
 needs the code.
 
-**1.8″ TFT — needs a `ui.cpp` rewrite.** It is an SPI ST7735 (128×160, 16-bit
-colour); the firmware drives an I²C SSD1306 (128×64, mono). Beyond swapping the
-library, four things change:
+**1.8″ TFT — `ui.cpp` rewritten.** It is an SPI ST7735 (128×160, 16-bit
+colour) where the firmware drove an I²C SSD1306 (128×64, mono). What changed:
 
-- **No framebuffer.** `ui.cpp` is built on `clearDisplay() → draw → display()`.
-  `Adafruit_ST7735` draws straight to the panel, so that pattern flickers
-  visibly at the current 10 Hz redraw. The clean fix is a `GFXcanvas16` — 128 ×
-  160 × 2 = 40 KB, comfortable in the C5's 320 KB.
-- **No presence detection.** `i2cProbe(ADDR_OLED)` works because I²C ACKs. SPI
-  has no equivalent, so the "no display, running headless" path cannot be kept
-  as-is.
-- **Layout.** 160 px of height fits ~13 menu rows instead of the current 5; the
-  `ROWS`/`ROW_H`/`Y0` constants and the scrollbar geometry all need redoing.
-- **Colour.** Every `SSD1306_WHITE` / `SSD1306_BLACK` becomes a real colour,
-  and the selected-row inversion can become something better.
+- **Framebuffer.** `Adafruit_ST7735` draws straight to the panel, so the
+  `clearDisplay() → draw → display()` pattern the menu is built around would
+  tear at a 10 Hz refresh. Drawing now goes into a `GFXcanvas16` pushed in one
+  blit — 128 × 160 × 2 = 40 KB against 320 KB of SRAM.
+- **No presence detection.** `i2cProbe()` worked because I²C acknowledges. SPI
+  does not, so `ui.begin()` reports what it configured, not what replied, and
+  the "running headless" path is gone.
+- **Layout.** Ten menu rows instead of five, and the home screen gained
+  deadband bands under each reading — the same idea as the web panel.
+- **Colour.** The palette is lifted from `webpage.h` so the display and the web
+  page read as one product.
 
-Adds `adafruit/Adafruit ST7735 and ST7789 Library` to `lib_deps`.
+`lib_deps` gains `adafruit/Adafruit ST7735 and ST7789 Library` and
+`adafruit/Adafruit MCP23017 Arduino Library`; `Adafruit SSD1306` is dropped.
 
 ---
 

@@ -1,18 +1,43 @@
 #include "ui.h"
 #include "config.h"
-#include "i2c.h"
 #include "settings.h"
 #include "pumps.h"
 #include "sensors.h"
 #include "control.h"
 #include "net.h"
-#include <Wire.h>
+#include <SPI.h>
 #include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include <Adafruit_ST7735.h>
 
 Ui ui;
 
-static Adafruit_SSD1306 oled(128, 64, &Wire, -1);
+// RST is tied to 3V3 on the module, hence -1.
+//
+// If the panel comes up with a white border, mirrored text or shifted colours,
+// this is the line to change: INITR_BLACKTAB / INITR_GREENTAB / INITR_REDTAB
+// select between the tab variants of the same 1.8" glass.
+static Adafruit_ST7735 tft(PIN_TFT_CS, PIN_TFT_DC, -1);
+
+// Everything is drawn into a full-frame canvas and pushed in one blit.
+// Adafruit_ST7735 keeps no framebuffer of its own, so the clear-then-redraw
+// the menu code is built around would tear visibly at a 10 Hz refresh.
+// 128 x 160 x 2 = 40 KB, against 320 KB of SRAM.
+static GFXcanvas16 cv(TFT_W, TFT_H);
+
+// RGB565, same palette as the web panel in webpage.h so the two surfaces read
+// as one product.
+#define RGB565(r, g, b) ((uint16_t)((((r) & 0xF8) << 8) | (((g) & 0xFC) << 3) | ((b) >> 3)))
+static const uint16_t C_BG    = RGB565(0x12, 0x14, 0x0f);
+static const uint16_t C_PANEL = RGB565(0x1c, 0x1f, 0x18);
+static const uint16_t C_LINE  = RGB565(0x2e, 0x33, 0x27);
+static const uint16_t C_BAND  = RGB565(0x3d, 0x46, 0x33);
+static const uint16_t C_INK   = RGB565(0xe8, 0xe6, 0xde);
+static const uint16_t C_DIM   = RGB565(0x8c, 0x91, 0x82);
+static const uint16_t C_OK    = RGB565(0x8f, 0xbf, 0x4a);
+static const uint16_t C_ACT   = RGB565(0xe0, 0xa8, 0x2e);
+static const uint16_t C_BAD   = RGB565(0xc4, 0x55, 0x3b);
+
+static void push() { tft.drawRGBBitmap(0, 0, cv.getBuffer(), TFT_W, TFT_H); }
 
 // ---------------------------------------------------------------------------
 // Encoder: quadrature decoded in an ISR, four transitions per detent.
@@ -431,44 +456,96 @@ static void applyCalibrationEntry() {
 // ---------------------------------------------------------------------------
 // Drawing
 // ---------------------------------------------------------------------------
+static void drawHeader(const char* title) {
+  cv.fillRect(0, 0, TFT_W, 14, C_PANEL);
+  cv.drawFastHLine(0, 14, TFT_W, C_LINE);
+  cv.setTextSize(1);
+  cv.setTextColor(C_DIM);
+  cv.setCursor(4, 4);
+  cv.print(title);
+}
+
+// Shows where a reading sits inside its deadband - the same idea as the band
+// under each readout on the web page.
+static void drawBand(int16_t y, float val, float sp, float db, float lo, float hi) {
+  const int16_t X = 4, W = TFT_W - 8;
+  cv.fillRect(X, y, W, 4, C_LINE);
+
+  int16_t bx = X + (int16_t)((sp - db - lo) / (hi - lo) * W);
+  int16_t bw = (int16_t)((2.0f * db) / (hi - lo) * W);
+  if (bx < X) { bw -= (X - bx); bx = X; }
+  if (bx + bw > X + W) bw = X + W - bx;
+  if (bw > 0) cv.fillRect(bx, y, bw, 4, C_BAND);
+
+  if (isnan(val)) return;
+  float p = (val - lo) / (hi - lo);
+  if (p < 0.0f) p = 0.0f;
+  if (p > 1.0f) p = 1.0f;
+  int16_t mx = X + (int16_t)(p * W);
+  cv.fillRect(mx - 1, y - 3, 3, 10, fabsf(val - sp) > db ? C_BAD : C_OK);
+}
+
+static void drawReading(int16_t y, const char* label, float v,
+                        const char* blank, const char* fmt) {
+  char buf[16];
+  cv.setTextSize(1);
+  cv.setTextColor(C_DIM);
+  cv.setCursor(4, y);
+  cv.print(label);
+
+  cv.setTextSize(3);
+  cv.setTextColor(isnan(v) ? C_DIM : C_INK);
+  cv.setCursor(4, y + 10);
+  if (isnan(v)) cv.print(blank);
+  else { snprintf(buf, sizeof(buf), fmt, v); cv.print(buf); }
+}
+
 static void drawHome() {
   const Reading& r = sensors.last();
   char buf[24];
 
-  oled.setTextSize(2);
-  oled.setCursor(0, 2);
-  if (isnan(r.ph)) oled.print(F("pH --.-"));
-  else { snprintf(buf, sizeof(buf), "pH %.2f", r.ph); oled.print(buf); }
-
-  oled.setCursor(0, 22);
-  if (isnan(r.ec)) oled.print(F("EC ----"));
-  else { snprintf(buf, sizeof(buf), "EC %.0f", r.ec); oled.print(buf); }
-
-  oled.setTextSize(1);
-  oled.setCursor(104, 28);
-  oled.print(F("uS"));
-
+  drawHeader("MINI FEEDER");
+  if (settingsPendingSave()) {
+    cv.setTextColor(C_ACT);
+    cv.setCursor(TFT_W - 10, 4);
+    cv.print('*');
+  }
   if (!r.valid) {
-    oled.setCursor(104, 4);
-    oled.print(F("~"));
+    cv.setTextSize(1);
+    cv.setTextColor(C_DIM);
+    cv.setCursor(TFT_W - 58, 4);
+    cv.print(F("settling"));
   }
 
-  oled.drawFastHLine(0, 42, 128, SSD1306_WHITE);
+  drawReading(20, "pH", r.ph, "--.-", "%.2f");
+  drawBand(58, r.ph, cfg.phSetpoint, cfg.phDeadband, 4.0f, 8.0f);
 
-  oled.setCursor(0, 46);
-  if (pumps.busy()) {
+  drawReading(70, "EC uS/cm", r.ec, "----", "%.0f");
+  drawBand(108, r.ec, cfg.ecSetpoint, cfg.ecDeadband, 0.0f, 3000.0f);
+
+  cv.drawFastHLine(0, 120, TFT_W, C_LINE);
+
+  cv.setTextSize(1);
+  cv.setCursor(4, 126);
+  if (!pumps.driverOk()) {
+    cv.setTextColor(C_BAD);
+    cv.print(F("PUMP DRIVER OFFLINE"));
+  } else if (pumps.busy()) {
     int8_t p = pumps.running();
-    snprintf(buf, sizeof(buf), "%.16s %lus",
-             cfg.pump[p].name, (unsigned long)((pumps.runRemainingMs() + 999) / 1000));
-    oled.print(buf);
+    cv.setTextColor(C_ACT);
+    snprintf(buf, sizeof(buf), "%.13s %lus", cfg.pump[p].name,
+             (unsigned long)((pumps.runRemainingMs() + 999) / 1000));
+    cv.print(buf);
   } else {
-    oled.print(control.statusText());
+    cv.setTextColor(C_ACT);
+    cv.print(control.statusText());
   }
 
-  oled.setCursor(0, 56);
-  snprintf(buf, sizeof(buf), "%-14.14s %s", netIpText(),
-           settingsPendingSave() ? "*" : " ");
-  oled.print(buf);
+  cv.setTextColor(C_DIM);
+  cv.setCursor(4, 140);
+  cv.print(netIpText());
+  cv.setCursor(4, 150);
+  cv.print(netMqttStateText());
 }
 
 static void drawMenu() {
@@ -484,13 +561,11 @@ static void drawMenu() {
     default: break;
   }
 
-  oled.fillRect(0, 0, 128, 11, SSD1306_WHITE);
-  oled.setTextColor(SSD1306_BLACK);
-  oled.setCursor(2, 2);
-  oled.print(title);
-  oled.setTextColor(SSD1306_WHITE);
+  drawHeader(title);
 
-  const uint8_t ROWS = 5, ROW_H = 10, Y0 = 13;
+  // 160 px of height fits ten rows where the old 64 px panel fitted five.
+  const uint8_t ROWS = 10, ROW_H = 13;
+  const int16_t Y0 = 18;
   uint8_t sel = selStack[depth];
   if (sel < topRow) topRow = sel;
   if (sel >= topRow + ROWS) topRow = sel - ROWS + 1;
@@ -498,55 +573,53 @@ static void drawMenu() {
   char val[16];
   for (uint8_t i = 0; i < ROWS && (topRow + i) < nItems; i++) {
     uint8_t idx = topRow + i;
-    uint8_t y = Y0 + i * ROW_H;
+    int16_t y = Y0 + i * ROW_H;
     bool on = (idx == sel);
 
-    if (on) {
-      oled.fillRect(0, y - 1, 128, ROW_H, SSD1306_WHITE);
-      oled.setTextColor(SSD1306_BLACK);
-    } else {
-      oled.setTextColor(SSD1306_WHITE);
-    }
+    if (on) cv.fillRect(0, y - 1, TFT_W, ROW_H, C_PANEL);
 
-    oled.setCursor(2, y);
-    oled.print(items[idx].label);
+    cv.setTextSize(1);
+    cv.setTextColor(on ? C_INK : C_DIM);
+    cv.setCursor(4, y + 2);
+    cv.print(items[idx].label);
 
     itemValueText(items[idx], val, sizeof(val));
     if (val[0]) {
-      uint8_t w = (uint8_t)(strlen(val) * 6);
-      uint8_t x = (uint8_t)(126 - w);
+      int16_t w = (int16_t)(strlen(val) * 6);
+      int16_t x = TFT_W - 5 - w;
       if (on && editing) {
-        oled.fillRect(x - 2, y - 1, w + 4, ROW_H, SSD1306_BLACK);
-        oled.setTextColor(SSD1306_WHITE);
-        oled.setCursor(x, y);
-        oled.print(val);
-        oled.setTextColor(SSD1306_BLACK);
+        cv.fillRect(x - 3, y - 1, w + 6, ROW_H, C_OK);
+        cv.setTextColor(C_BG);
       } else {
-        oled.setCursor(x, y);
-        oled.print(val);
+        cv.setTextColor(on ? C_OK : C_DIM);
       }
+      cv.setCursor(x, y + 2);
+      cv.print(val);
     }
   }
-  oled.setTextColor(SSD1306_WHITE);
 
   if (nItems > ROWS) {
-    uint8_t barH = (uint8_t)max(4, (int)(51 * ROWS / nItems));
-    uint8_t barY = (uint8_t)(13 + (51 - barH) * topRow / (nItems - ROWS));
-    oled.drawFastVLine(127, 13, 51, SSD1306_WHITE);
-    oled.fillRect(126, barY, 2, barH, SSD1306_WHITE);
+    const int16_t trackH = ROWS * ROW_H;
+    int16_t barH = (int16_t)((int)trackH * ROWS / nItems);
+    if (barH < 8) barH = 8;
+    int16_t barY = Y0 + (int16_t)((trackH - barH) * topRow / (nItems - ROWS));
+    cv.drawFastVLine(TFT_W - 2, Y0, trackH, C_LINE);
+    cv.fillRect(TFT_W - 3, barY, 3, barH, C_DIM);
   }
 }
 
 static void drawToast() {
   if (millis() > toastUntil) return;
-  uint8_t w = (uint8_t)(strlen(toastMsg) * 6 + 8);
-  if (w > 128) w = 128;
-  uint8_t x = (uint8_t)((128 - w) / 2);
-  oled.fillRect(x, 26, w, 13, SSD1306_BLACK);
-  oled.drawRect(x, 26, w, 13, SSD1306_WHITE);
-  oled.setTextColor(SSD1306_WHITE);
-  oled.setCursor(x + 4, 30);
-  oled.print(toastMsg);
+  int16_t w = (int16_t)(strlen(toastMsg) * 6 + 12);
+  if (w > TFT_W - 8) w = TFT_W - 8;
+  int16_t x = (TFT_W - w) / 2;
+  int16_t y = TFT_H / 2 - 9;
+  cv.fillRect(x, y, w, 18, C_PANEL);
+  cv.drawRect(x, y, w, 18, C_OK);
+  cv.setTextSize(1);
+  cv.setTextColor(C_INK);
+  cv.setCursor(x + 6, y + 6);
+  cv.print(toastMsg);
 }
 
 // ---------------------------------------------------------------------------
@@ -627,27 +700,33 @@ bool Ui::begin() {
   Serial.println(F("[enc] encoder disabled in config.h"));
 #endif
 
-  // Probe the address before handing over to the library. Adafruit's begin()
-  // does not check whether its init writes were acknowledged, so a missing
-  // display otherwise floods the console with i2cWrite() errors and still
-  // reports success.
-  if (!i2cProbe(ADDR_OLED)) {
-    Serial.println(F("[oled] no display at 0x3C"));
-    _present = false;
-    return false;
-  }
-  _present = oled.begin(SSD1306_SWITCHCAPVCC, ADDR_OLED);
-  if (!_present) {
-    Serial.println(F("[oled] found at 0x3C but init failed"));
-    return false;
-  }
-  oled.clearDisplay();
-  oled.setTextSize(1);
-  oled.setTextColor(SSD1306_WHITE);
-  oled.setCursor(0, 0);
-  oled.println(F("Mini Feeder"));
-  oled.println(FW_VERSION);
-  oled.display();
+  // miso = -1 so the SPI peripheral never claims GPIO9 - the core skips
+  // spiAttachMISO() for a negative pin, which is what leaves D9 free for the
+  // temperature probe. See config.h.
+  SPI.begin(PIN_TFT_SCLK, TFT_MISO_UNUSED, PIN_TFT_MOSI, PIN_TFT_CS);
+  tft.initR(INITR_BLACKTAB);
+  tft.setSPISpeed(24000000);
+  tft.setRotation(0);
+  tft.fillScreen(C_BG);
+
+  // SPI has no acknowledge, so unlike the I2C parts there is no way to tell a
+  // present display from an absent one. This reports what was configured.
+  _present = true;
+
+  cv.fillScreen(C_BG);
+  cv.setTextColor(C_INK);
+  cv.setTextSize(2);
+  cv.setCursor(8, 58);
+  cv.print(F("Mini"));
+  cv.setCursor(8, 78);
+  cv.print(F("Feeder"));
+  cv.setTextSize(1);
+  cv.setTextColor(C_DIM);
+  cv.setCursor(8, 104);
+  cv.print(F(FW_VERSION));
+  push();
+
+  Serial.println(F("[tft] ST7735 128x160 initialised"));
   return true;
 }
 
@@ -680,9 +759,9 @@ void Ui::tick() {
     selStack[depth] = keep < nItems ? keep : (nItems ? nItems - 1 : 0);
   }
 
-  oled.clearDisplay();
+  cv.fillScreen(C_BG);
   if (s == SCR_HOME) drawHome();
   else drawMenu();
   drawToast();
-  oled.display();
+  push();
 }

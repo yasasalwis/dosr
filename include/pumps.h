@@ -13,7 +13,8 @@ enum DoseResult : uint8_t {
   DOSE_REJECT_CALIBRATION, // mlPerSec is not usable
   DOSE_REJECT_FLOAT,       // reservoir float switch says empty
   DOSE_REJECT_LOCKOUT,
-  DOSE_REJECT_BADARG
+  DOSE_REJECT_BADARG,
+  DOSE_REJECT_NO_DRIVER    // MCP23017 absent or the bus is not answering
 };
 
 const char* doseResultText(DoseResult r);
@@ -42,6 +43,10 @@ public:
   uint8_t  dosesLastHour(uint8_t i);
   bool     floatOk() const;
 
+  // False when the MCP23017 did not answer at boot. Every dose is refused
+  // while this is false - there is no way to drive a gate without it.
+  bool     driverOk() const { return _driverOk; }
+
 private:
   struct Job { uint8_t idx; uint32_t ms; float ml; };
 
@@ -58,10 +63,19 @@ private:
   uint32_t _history[NUM_PUMPS][DOSE_HISTORY_LEN] = {{0}};
   uint8_t  _histIdx[NUM_PUMPS]     = {0};
 
+  bool     _driverOk   = false;
+  uint8_t  _gates      = 0;      // shadow of MCP port A, one bit per pump
+  bool     _floatOk    = true;   // cached; the switch is behind the expander
+  uint32_t _nextFloatRead = 0;
+  uint32_t _stopFailSince = 0;   // 0 = the last gate write succeeded
+
   bool push(const Job& j);
   void startNext();
   void stopCurrent();
   void recordDose(uint8_t idx);
+
+  bool writeGates(uint8_t mask);   // write port A and verify by read-back
+  void readFloat();
 };
 
 extern Pumps pumps;

@@ -4,26 +4,42 @@
 // ---------------------------------------------------------------------------
 // Pin map - Seeed XIAO ESP32-C5
 // The D0..D10 macros come from the board variant. GPIO numbers in comments.
+//
+// All 11 exposed pads are spoken for. The pump gates and the float switch live
+// on an MCP23017 rather than on the MCU, because the SPI display needs four
+// pins and there is no other way to find them - see docs/BOM.md section 2.
 // ---------------------------------------------------------------------------
 #define PIN_ENC_SW   D0    // GPIO1  - encoder push, INPUT_PULLUP, also an LP wake pin
 #define PIN_ENC_A    D1    // GPIO0  - encoder channel A
 #define PIN_ENC_B    D2    // GPIO25 - encoder channel B
-#define PIN_PUMP_1   D3    // GPIO7  - MOSFET gate
+#define PIN_TFT_CS   D3    // GPIO7  - also the variant's native SPI SS
 #define PIN_I2C_SDA  D4    // GPIO23
 #define PIN_I2C_SCL  D5    // GPIO24
                            // D6 / GPIO11 is UART0 TX - left free for boot logs
-#define PIN_PUMP_2   D7    // GPIO12
-#define PIN_PUMP_3   D8    // GPIO8
-#define PIN_PUMP_4   D9    // GPIO9
-#define PIN_FLOAT    D10   // GPIO10 - reservoir float switch (optional)
+#define PIN_TFT_DC   D7    // GPIO12 - data/command select
+#define PIN_TFT_SCLK D8    // GPIO8  - native SPI SCK
+#define PIN_DS18B20  D9    // GPIO9  - reserved, driver not implemented yet
+#define PIN_TFT_MOSI D10   // GPIO10 - native SPI MOSI
 
-static const uint8_t PUMP_PINS[4] = { PIN_PUMP_1, PIN_PUMP_2, PIN_PUMP_3, PIN_PUMP_4 };
+// SPI.begin() is called with miso = -1. The core skips spiAttachMISO() when
+// the pin is negative, so GPIO9 is never claimed by the SPI peripheral and
+// stays free for the one-wire temperature probe.
+#define TFT_MISO_UNUSED (-1)
+
+// The 1.8" ST7735 panel is 128x160 portrait.
+static const int16_t TFT_W = 128;
+static const int16_t TFT_H = 160;
 
 // ---------------------------------------------------------------------------
 // I2C addresses
 // ---------------------------------------------------------------------------
-#define ADDR_OLED    0x3C
-#define ADDR_ADS1115 0x48
+#define ADDR_MCP23017 0x20   // A0/A1/A2 strapped to GND
+#define ADDR_ADS1115  0x48
+
+// Pump gates on port A, float switch on port B. The Adafruit library numbers
+// GPA0..GPA7 as 0..7 and GPB0..GPB7 as 8..15.
+static const uint8_t MCP_PUMP_PINS[4] = { 0, 1, 2, 3 };
+static const uint8_t MCP_PIN_FLOAT    = 8;
 
 #define ADS_CH_PH    0
 #define ADS_CH_EC    1

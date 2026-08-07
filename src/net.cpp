@@ -57,6 +57,7 @@ static void buildState(JsonDocument& d) {
   d["running"]    = pumps.running();
   d["remainMs"]   = pumps.runRemainingMs();
   d["floatOk"]    = pumps.floatOk();
+  d["driverOk"]   = pumps.driverOk();
   d["phSetpoint"] = cfg.phSetpoint;
   d["phDeadband"] = cfg.phDeadband;
   d["ecSetpoint"] = cfg.ecSetpoint;

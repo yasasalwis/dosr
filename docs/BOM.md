@@ -182,8 +182,12 @@ written. Nothing to change.
 *Manual C* in the menu, and is what gets used when no probe answers — unplugging
 the probe degrades to the old behaviour rather than failing. Conversions are
 asynchronous so nothing blocks `loop()`. Needs a **4.7 kΩ pull-up from D9 to
-3V3**. Adds `paulstoffregen/OneWire` and `milesburton/DallasTemperature` to
-`lib_deps`, and a temperature entity to Home Assistant discovery.
+3V3**, and adds a temperature entity to Home Assistant discovery.
+
+It adds **no libraries**: OneWire does not compile for the ESP32-C5, because
+its ESP32 path writes the GPIO registers directly and IDF 5.5 makes those
+bitfield unions rather than `uint32_t`. `src/ds18b20.cpp` drives the probe
+through the Arduino API instead.
 
 **1.8″ TFT — `ui.cpp` rewritten.** It is an SPI ST7735 (128×160, 16-bit
 colour) where the firmware drove an I²C SSD1306 (128×64, mono). What changed:

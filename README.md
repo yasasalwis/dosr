@@ -84,7 +84,8 @@ test/                   unit tests — empty for now
 | `main` | Boot, I²C scan, watchdog, `loop()` ordering |
 | `settings` | `Settings` struct, NVS load/save, debounced writes |
 | `pumps` | Dose queue, timing, rate limits, float-switch abort |
-| `sensors` | ADS1115 sampling, DS18B20 temperature, pH/EC conversion, calibration |
+| `sensors` | ADS1115 sampling, temperature, pH/EC conversion, calibration |
+| `ds18b20` | Bit-banged 1-Wire master for the temperature probe |
 | `control` | Scheduled and closed-loop dosing decisions |
 | `ui` | ST7735 menu, rotary encoder, toasts |
 | `net` | WiFi/AP, HTTP API, MQTT, Home Assistant discovery |
@@ -143,12 +144,23 @@ there is no way to tell a wired display from an absent one — `ui.begin()`
 reports what it configured, not what answered.
 
 The DS18B20 needs a **4.7 kΩ pull-up from D9 to 3V3** — it is open-drain and
-nothing else holds that line high. Conversions run asynchronously at 11-bit
-resolution (0.125 °C, ~375 ms): `sensors.tick()` starts one, returns, and
+nothing else holds that line high. Conversions run asynchronously at 12-bit
+resolution (0.0625 °C, 750 ms): `sensors.tick()` starts one, returns, and
 collects the result on a later pass, because blocking `loop()` for a
 conversion would eat into pump timing. Readings of exactly 85 °C are discarded
 — that is the DS18B20's power-on default, and it looks like a plausible
-reading otherwise.
+reading otherwise. The bus reset at the start of each cycle doubles as the
+presence check, so a probe plugged in after boot is picked up on the next
+five-second tick and one removed simply reverts to the manual figure.
+
+The probe is driven by `src/ds18b20.cpp`, not by OneWire + DallasTemperature.
+OneWire's ESP32 path writes the GPIO registers directly —
+`GPIO.out_w1tc = (1 << pin)` — and on the ESP32-C5 under IDF 5.5 those
+registers are bitfield unions rather than `uint32_t`, so the library does not
+compile at all. It picks that path on `defined(ESP32)`, with no way to reach
+its portable `digitalWrite()` fallback from outside. The in-tree driver goes
+through the Arduino API, which the core keeps stable across SoC revisions, and
+assumes a single device on the bus so every transaction is SKIP ROM.
 
 ### No level shifter
 

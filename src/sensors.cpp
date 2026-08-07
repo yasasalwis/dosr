@@ -5,42 +5,50 @@
 #include "pumps.h"
 #include <Wire.h>
 #include <Adafruit_ADS1X15.h>
-#include <OneWire.h>
-#include <DallasTemperature.h>
+#include "ds18b20.h"
 
 Sensors sensors;
 
 static Adafruit_ADS1115 ads;
 static const uint32_t READ_PERIOD_MS = 1000;
 
-static OneWire           oneWire(PIN_DS18B20);
-static DallasTemperature ds(&oneWire);
-
 static const uint32_t TEMP_PERIOD_MS = 5000;   // solution temperature drifts slowly
-static const uint8_t  DS_RESOLUTION  = 11;     // 0.125 C, and a 375 ms conversion
-static const uint32_t DS_CONV_MS     = 400;    // 11-bit conversion plus margin
+static const uint32_t DS_CONV_MS     = 800;    // a 12-bit conversion is 750 ms
 
 void Sensors::tempBegin() {
-  ds.begin();
-  if (ds.getDeviceCount() == 0 || !ds.getAddress(_dsAddr, 0)) {
+  ds18b20::begin(PIN_DS18B20);
+  // Presence is established by the reset in the first conversion rather than
+  // here, so a probe plugged in after boot still gets picked up.
+  if (ds18b20::setResolution12()) {
+    _tempOk = true;
+    Serial.println(F("[temp] DS18B20 ready"));
+  } else {
     Serial.println(F("[temp] no DS18B20 on D9 - using the hand-entered figure"));
-    _tempOk = false;
-    return;
   }
-  ds.setResolution(_dsAddr, DS_RESOLUTION);
-  // Never block loop() waiting for a conversion; tempTick() collects it later.
-  ds.setWaitForConversion(false);
-  _tempOk = true;
-  Serial.println(F("[temp] DS18B20 ready"));
 }
 
 void Sensors::tempTick() {
-  if (!_tempOk) return;
   uint32_t now = millis();
 
   if (!_converting) {
     if ((int32_t)(now - _tempNext) < 0) return;
-    ds.requestTemperatures();
+
+    // Every cycle starts with a bus reset, so this doubles as the presence
+    // check - unplugging the probe simply stops producing valid readings and
+    // the compensation falls back to cfg.tempC.
+    bool wasOk = _tempOk;
+    _tempOk = ds18b20::startConversion();
+    if (!_tempOk) {
+      if (wasOk) Serial.println(F("[temp] DS18B20 stopped answering"));
+      _last.tempValid = false;
+      _last.tempC     = NAN;
+      _tempNext       = now + TEMP_PERIOD_MS;
+      return;
+    }
+    if (!wasOk) {
+      Serial.println(F("[temp] DS18B20 detected"));
+      ds18b20::setResolution12();
+    }
     _converting = true;
     _convDoneAt = now + DS_CONV_MS;
     return;
@@ -50,11 +58,10 @@ void Sensors::tempTick() {
   _converting = false;
   _tempNext   = now + TEMP_PERIOD_MS;
 
-  float t = ds.getTempC(_dsAddr);
-  // DEVICE_DISCONNECTED_C is -127. The range check also rejects the 85 C
-  // power-on default a DS18B20 reports when it is read before it has ever
-  // converted, which would otherwise look like a plausible reading.
-  if (t <= DEVICE_DISCONNECTED_C || t < -40.0f || t >= 85.0f) {
+  // 85 C exactly is the power-on scratchpad default, reported by a probe that
+  // has not converted yet. It is in range and looks entirely plausible.
+  float t;
+  if (!ds18b20::readTemperature(t) || t < -40.0f || t >= 85.0f) {
     _last.tempValid = false;
     _last.tempC     = NAN;
     return;

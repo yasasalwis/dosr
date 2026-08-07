@@ -46,7 +46,6 @@ private:
   bool     _converting  = false;
   uint32_t _tempNext    = 0;
   uint32_t _convDoneAt  = 0;
-  uint8_t  _dsAddr[8]   = {0};
 
   float readChannelVolts(uint8_t ch, uint8_t samples = 9);
   void  tempBegin();

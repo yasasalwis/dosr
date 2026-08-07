@@ -1,0 +1,19 @@
+# PlatformIO build output, downloaded packages and per-machine metadata
+.pio/
+.pioenvs/
+.piolibdeps/
+.clang_complete
+.gcc-flags.json
+CMakeListsPrivate.txt
+compile_commands.json
+
+# Machine-local config: core_dir, upload_port, credentials for test uploads.
+# Copy platformio_override.ini.example to get started.
+platformio_override.ini
+
+# Editors
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+.DS_Store

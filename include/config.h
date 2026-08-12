@@ -26,9 +26,15 @@
 // stays free for the one-wire temperature probe.
 #define TFT_MISO_UNUSED (-1)
 
-// The 1.8" ST7735 panel is 128x160 portrait.
+// The fitted panel is the 2.0" ST7789 variant of the combo module: 240x320
+// native, 320x240 as mounted (landscape, encoder below the glass). The menu
+// is still rendered into the original 128x160 portrait canvas and centred on
+// the glass - a native 320x240 layout is a separate job. TFT_W/TFT_H are the
+// canvas, PANEL_W/PANEL_H the glass in its landscape rotation.
 static const int16_t TFT_W = 128;
 static const int16_t TFT_H = 160;
+static const int16_t PANEL_W = 320;
+static const int16_t PANEL_H = 240;
 
 // ---------------------------------------------------------------------------
 // I2C addresses

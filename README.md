@@ -1,6 +1,6 @@
 # dosr — Mini Feeder
 
-Four-channel 12 V dosing controller on a Seeed XIAO ESP32-C5, with a 1.8"
+Four-channel 12 V dosing controller on a Seeed XIAO ESP32-C5, with a 2.0"
 colour TFT + rotary encoder menu, a phone-friendly web panel, and Home
 Assistant over MQTT.
 
@@ -87,7 +87,7 @@ test/                   unit tests — empty for now
 | `sensors` | ADS1115 sampling, temperature, pH/EC conversion, calibration |
 | `ds18b20` | Bit-banged 1-Wire master for the temperature probe |
 | `control` | Scheduled and closed-loop dosing decisions |
-| `ui` | ST7735 menu, rotary encoder, toasts |
+| `ui` | ST7789 menu, rotary encoder, toasts |
 | `net` | WiFi/AP, HTTP API, MQTT, Home Assistant discovery |
 | `webpage` | The web panel, a `PROGMEM` string in `include/webpage.h` |
 
@@ -162,9 +162,13 @@ build, roughly in order of how long each one took to find:
   a glow with dead logic can mean a module whose onboard regulator wants
   **5 V** on VDD — the backlight runs happily off 3.3 V while the panel
   logic browns out. Look for a 3-pin regulator on the module.
-- **The wrong tab variant.** If the panel lights but the image is shifted,
-  mirrored or miscoloured, swap `INITR_BLACKTAB` for `INITR_GREENTAB` or
-  `INITR_REDTAB` in `src/ui.cpp` — one line, see the comment there.
+- **Wrong orientation, a corner-sized image, or negative colours.** The
+  fitted panel is the 2.0" ST7789 (320×240). An image squeezed into one
+  corner over noise means ST7735 init on ST7789 glass. Upside-down: swap
+  `setRotation(1)` for `setRotation(3)` in `src/ui.cpp`. Photo-negative
+  colours: add `tft.invertDisplay(false)` after `tft.init()`. If your combo
+  module is the 1.8" ST7735 variant instead, use `Adafruit_ST7735` with
+  `initR(INITR_BLACKTAB)` and 128×160 — see the comments in `ui.cpp`.
 
 The DS18B20 needs a **4.7 kΩ pull-up from D9 to 3V3** — it is open-drain and
 nothing else holds that line high. Conversions run asynchronously at 12-bit

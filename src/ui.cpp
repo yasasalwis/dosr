@@ -7,19 +7,21 @@
 #include "net.h"
 #include <SPI.h>
 #include <Adafruit_GFX.h>
-#include <Adafruit_ST7735.h>
+#include <Adafruit_ST7789.h>
 
 Ui ui;
 
 // RST is tied to 3V3 on the module, hence -1.
 //
-// If the panel comes up with a white border, mirrored text or shifted colours,
-// this is the line to change: INITR_BLACKTAB / INITR_GREENTAB / INITR_REDTAB
-// select between the tab variants of the same 1.8" glass.
-static Adafruit_ST7735 tft(PIN_TFT_CS, PIN_TFT_DC, -1);
+// The glass is the 2.0" ST7789 variant of the TFT+encoder combo module:
+// 240x320 native portrait, mounted landscape with the encoder below it.
+// If the image comes up upside-down, swap setRotation(1) for setRotation(3)
+// in begin(); if colours look like a photo negative, add
+// tft.invertDisplay(false) after tft.init().
+static Adafruit_ST7789 tft(PIN_TFT_CS, PIN_TFT_DC, -1);
 
 // Everything is drawn into a full-frame canvas and pushed in one blit.
-// Adafruit_ST7735 keeps no framebuffer of its own, so the clear-then-redraw
+// Adafruit_ST7789 keeps no framebuffer of its own, so the clear-then-redraw
 // the menu code is built around would tear visibly at a 10 Hz refresh.
 // 128 x 160 x 2 = 40 KB, against 320 KB of SRAM.
 static GFXcanvas16 cv(TFT_W, TFT_H);
@@ -37,7 +39,12 @@ static const uint16_t C_OK    = RGB565(0x8f, 0xbf, 0x4a);
 static const uint16_t C_ACT   = RGB565(0xe0, 0xa8, 0x2e);
 static const uint16_t C_BAD   = RGB565(0xc4, 0x55, 0x3b);
 
-static void push() { tft.drawRGBBitmap(0, 0, cv.getBuffer(), TFT_W, TFT_H); }
+// The 128x160 canvas is centred on the 320x240 glass; begin() paints the
+// border once and push() never touches it, so there is nothing to flicker.
+static void push() {
+  tft.drawRGBBitmap((PANEL_W - TFT_W) / 2, (PANEL_H - TFT_H) / 2,
+                    cv.getBuffer(), TFT_W, TFT_H);
+}
 
 // ---------------------------------------------------------------------------
 // Encoder: quadrature decoded in an ISR, four transitions per detent.
@@ -711,9 +718,9 @@ bool Ui::begin() {
   // spiAttachMISO() for a negative pin, which is what leaves D9 free for the
   // temperature probe. See config.h.
   SPI.begin(PIN_TFT_SCLK, TFT_MISO_UNUSED, PIN_TFT_MOSI, PIN_TFT_CS);
-  tft.initR(INITR_BLACKTAB);
+  tft.init(240, 320);       // ST7789 native portrait dimensions
   tft.setSPISpeed(24000000);
-  tft.setRotation(0);
+  tft.setRotation(1);       // landscape: 320x240, encoder below the glass
   tft.fillScreen(C_BG);
 
   // SPI has no acknowledge, so unlike the I2C parts there is no way to tell a
@@ -733,7 +740,7 @@ bool Ui::begin() {
   cv.print(F(FW_VERSION));
   push();
 
-  Serial.println(F("[tft] ST7735 128x160 initialised"));
+  Serial.println(F("[tft] ST7789 320x240 initialised, 128x160 UI centred"));
   return true;
 }
 

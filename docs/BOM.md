@@ -9,7 +9,7 @@ and ranges from the drivers that use them.
 > **Decided:** the pump gates and the float switch move onto an **MCP23017**
 > I²C expander, freeing four MCU pins for the SPI display. Section 2 shows the
 > arithmetic. The firmware has been updated to match — `pumps.cpp` drives the
-> expander, `ui.cpp` drives the ST7735.
+> expander, `ui.cpp` drives the TFT (ST7789 — see §6).
 
 ---
 
@@ -21,7 +21,7 @@ and ranges from the drivers that use them.
 | 1.2 | **pH sensor module** + BNC electrode probe, pH 0–14 | 1 | `ADS_CH_PH = 0` | ✅ matches firmware |
 | 1.3 | **Peristaltic dosing pump** — select the **12 V** variant | 4 | `MCP_PUMP_PINS[4]` | ✅ matches firmware |
 | 1.4 | **TDS sensor module**, analog out, bundled **DS18B20** temp probe | 1 | `ADS_CH_EC = 1`, `PIN_DS18B20` | ✅ both halves driven |
-| 1.5 | **1.8″ TFT + EC11 rotary encoder combo module**, SPI | 1 | `PIN_TFT_*` | ✅ `ui.cpp` now drives ST7735 |
+| 1.5 | **2.0″ TFT + EC11 rotary encoder combo module**, SPI (ST7789, 240×320) | 1 | `PIN_TFT_*` | ✅ `ui.cpp` drives ST7789 |
 
 The pump listing also sells 3 V, 6 V and 24 V — pick 12 V to match the PSU and
 the MOSFET drive. If it offers a tubing choice, BPT outlasts silicone under
@@ -188,6 +188,12 @@ It adds **no libraries**: OneWire does not compile for the ESP32-C5, because
 its ESP32 path writes the GPIO registers directly and IDF 5.5 makes those
 bitfield unions rather than `uint32_t`. `src/ds18b20.cpp` drives the probe
 through the Arduino API instead.
+
+> **Update, first hardware bring-up:** the delivered module is the **2.0″
+> ST7789 (240×320)** variant of the same combo family, not the 1.8″ ST7735.
+> `ui.cpp` initialises the ST7789 and centres the existing 128×160 UI on the
+> glass; a native 320×240 layout remains future work. The section below is
+> kept as the history of the SSD1306→TFT rewrite.
 
 **1.8″ TFT — `ui.cpp` rewritten.** It is an SPI ST7735 (128×160, 16-bit
 colour) where the firmware drove an I²C SSD1306 (128×64, mono). What changed:

@@ -20,10 +20,14 @@ Ui ui;
 // tft.invertDisplay(false) after tft.init().
 static Adafruit_ST7789 tft(PIN_TFT_CS, PIN_TFT_DC, -1);
 
-// Everything is drawn into a full-frame canvas and pushed in one blit.
-// Adafruit_ST7789 keeps no framebuffer of its own, so the clear-then-redraw
-// the menu code is built around would tear visibly at a 10 Hz refresh.
-// 128 x 160 x 2 = 40 KB, against 320 KB of SRAM.
+// Everything is drawn into a 160x120 canvas and pixel-doubled onto the
+// 320x240 glass in push(). Adafruit textSize n doubled is pixel-identical to
+// textSize 2n drawn native, so this renders exactly like a full-resolution
+// framebuffer for a quarter of the RAM: 160 x 120 x 2 = 38 KB, where a
+// native 320x240 canvas would take 150 KB of the 384 KB total SRAM - not a
+// safe neighbour for the WiFi stack. Adafruit_ST7789 keeps no framebuffer of
+// its own, and clear-then-redraw straight to the panel would tear at a 10 Hz
+// refresh.
 static GFXcanvas16 cv(TFT_W, TFT_H);
 
 // RGB565, same palette as the web panel in webpage.h so the two surfaces read
@@ -39,11 +43,27 @@ static const uint16_t C_OK    = RGB565(0x8f, 0xbf, 0x4a);
 static const uint16_t C_ACT   = RGB565(0xe0, 0xa8, 0x2e);
 static const uint16_t C_BAD   = RGB565(0xc4, 0x55, 0x3b);
 
-// The 128x160 canvas is centred on the 320x240 glass; begin() paints the
-// border once and push() never touches it, so there is nothing to flicker.
+// Stream the canvas out doubled: each logical pixel becomes 2x2 on the
+// glass, each canvas row two identical panel rows. writePixels() does the
+// endianness conversion, same as the drawRGBBitmap path it replaces. The
+// full frame is ~150 KB over SPI, ~50 ms at 24 MHz - loop() stalls that
+// long per refresh, which at 10 Hz still leaves pump stop timing well
+// under the noise floor of a peristaltic dose.
 static void push() {
-  tft.drawRGBBitmap((PANEL_W - TFT_W) / 2, (PANEL_H - TFT_H) / 2,
-                    cv.getBuffer(), TFT_W, TFT_H);
+  static uint16_t line[PANEL_W];
+  const uint16_t* src = cv.getBuffer();
+  tft.startWrite();
+  tft.setAddrWindow(0, 0, PANEL_W, PANEL_H);
+  for (int16_t y = 0; y < TFT_H; y++) {
+    const uint16_t* row = src + (int32_t)y * TFT_W;
+    for (int16_t x = 0; x < TFT_W; x++) {
+      line[2 * x]     = row[x];
+      line[2 * x + 1] = row[x];
+    }
+    tft.writePixels(line, PANEL_W);
+    tft.writePixels(line, PANEL_W);
+  }
+  tft.endWrite();
 }
 
 // ---------------------------------------------------------------------------
@@ -144,7 +164,7 @@ enum Screen : uint8_t {
 };
 
 enum Kind : uint8_t {
-  K_SUBMENU, K_FLOAT, K_U16, K_U8, K_ENUM, K_BOOL, K_ACTION, K_INFO
+  K_SUBMENU, K_FLOAT, K_U16, K_U8, K_ENUM, K_BOOL, K_ACTION, K_INFO, K_BACK
 };
 
 enum Action : uint8_t {
@@ -317,6 +337,9 @@ static void rebuild() {
     case SCR_SYSTEM:   buildSystem();   break;
     default: break;
   }
+  // Every submenu ends with an on-screen way out; the long press stays as
+  // the shortcut.
+  if (depth > 0) addItem("< Back", K_BACK, nullptr);
   if (selStack[depth] >= nItems) selStack[depth] = nItems ? nItems - 1 : 0;
 }
 
@@ -367,6 +390,7 @@ static void itemSet(const Item& it, float v) {
 static void itemValueText(const Item& it, char* out, size_t n) {
   switch (it.kind) {
     case K_SUBMENU: strlcpy(out, ">", n); break;
+    case K_BACK:    out[0] = '\0';        break;
     case K_ACTION:  strlcpy(out, "*", n); break;
     case K_INFO:    strlcpy(out, it.info, n); break;
     case K_ENUM:
@@ -481,8 +505,8 @@ static void drawHeader(const char* title) {
 
 // Shows where a reading sits inside its deadband - the same idea as the band
 // under each readout on the web page.
-static void drawBand(int16_t y, float val, float sp, float db, float lo, float hi) {
-  const int16_t X = 4, W = TFT_W - 8;
+static void drawBand(int16_t X, int16_t y, int16_t W,
+                     float val, float sp, float db, float lo, float hi) {
   cv.fillRect(X, y, W, 4, C_LINE);
 
   int16_t bx = X + (int16_t)((sp - db - lo) / (hi - lo) * W);
@@ -499,17 +523,17 @@ static void drawBand(int16_t y, float val, float sp, float db, float lo, float h
   cv.fillRect(mx - 1, y - 3, 3, 10, fabsf(val - sp) > db ? C_BAD : C_OK);
 }
 
-static void drawReading(int16_t y, const char* label, float v,
+static void drawReading(int16_t x, int16_t y, const char* label, float v,
                         const char* blank, const char* fmt) {
   char buf[16];
   cv.setTextSize(1);
   cv.setTextColor(C_DIM);
-  cv.setCursor(4, y);
+  cv.setCursor(x, y);
   cv.print(label);
 
-  cv.setTextSize(3);
+  cv.setTextSize(2);
   cv.setTextColor(isnan(v) ? C_DIM : C_INK);
-  cv.setCursor(4, y + 10);
+  cv.setCursor(x, y + 10);
   if (isnan(v)) cv.print(blank);
   else { snprintf(buf, sizeof(buf), fmt, v); cv.print(buf); }
 }
@@ -527,20 +551,22 @@ static void drawHome() {
   if (!r.valid) {
     cv.setTextSize(1);
     cv.setTextColor(C_DIM);
-    cv.setCursor(TFT_W - 58, 4);
+    cv.setCursor(TFT_W - 68, 4);
     cv.print(F("settling"));
   }
 
-  drawReading(20, "pH", r.ph, "--.-", "%.2f");
-  drawBand(58, r.ph, cfg.phSetpoint, cfg.phDeadband, 4.0f, 8.0f);
+  // Landscape glass, so the two readings sit side by side.
+  drawReading(4, 20, "pH", r.ph, "--.-", "%.2f");
+  drawBand(4, 54, 72, r.ph, cfg.phSetpoint, cfg.phDeadband, 4.0f, 8.0f);
 
-  drawReading(70, "EC uS/cm", r.ec, "----", "%.0f");
-  drawBand(108, r.ec, cfg.ecSetpoint, cfg.ecDeadband, 0.0f, 3000.0f);
+  drawReading(84, 20, "EC uS/cm", r.ec, "----", "%.0f");
+  drawBand(84, 54, 72, r.ec, cfg.ecSetpoint, cfg.ecDeadband, 0.0f, 3000.0f);
 
-  cv.drawFastHLine(0, 120, TFT_W, C_LINE);
+  cv.drawFastVLine(80, 17, 45, C_LINE);
+  cv.drawFastHLine(0, 66, TFT_W, C_LINE);
 
   cv.setTextSize(1);
-  cv.setCursor(4, 126);
+  cv.setCursor(4, 72);
   if (!pumps.driverOk()) {
     cv.setTextColor(C_BAD);
     cv.print(F("PUMP DRIVER OFFLINE"));
@@ -556,9 +582,9 @@ static void drawHome() {
   }
 
   cv.setTextColor(C_DIM);
-  cv.setCursor(4, 140);
+  cv.setCursor(4, 84);
   cv.print(netIpText());
-  cv.setCursor(4, 150);
+  cv.setCursor(4, 96);
   cv.print(netMqttStateText());
 }
 
@@ -577,9 +603,10 @@ static void drawMenu() {
 
   drawHeader(title);
 
-  // 160 px of height fits ten rows where the old 64 px panel fitted five.
-  const uint8_t ROWS = 10, ROW_H = 13;
-  const int16_t Y0 = 18;
+  // 120 logical px fit nine rows under the header; doubled onto the glass
+  // each row is 22 px tall with 16 px text.
+  const uint8_t ROWS = 9, ROW_H = 11;
+  const int16_t Y0 = 17;
   uint8_t sel = selStack[depth];
   if (sel < topRow) topRow = sel;
   if (sel >= topRow + ROWS) topRow = sel - ROWS + 1;
@@ -682,6 +709,9 @@ static void handleShort() {
     case K_ACTION:
       runAction(it.arg);
       break;
+    case K_BACK:
+      popScreen();
+      break;
     case K_INFO:
       break;
     default:
@@ -730,17 +760,17 @@ bool Ui::begin() {
   cv.fillScreen(C_BG);
   cv.setTextColor(C_INK);
   cv.setTextSize(2);
-  cv.setCursor(8, 58);
+  cv.setCursor(8, 40);
   cv.print(F("Mini"));
-  cv.setCursor(8, 78);
+  cv.setCursor(8, 60);
   cv.print(F("Feeder"));
   cv.setTextSize(1);
   cv.setTextColor(C_DIM);
-  cv.setCursor(8, 104);
+  cv.setCursor(8, 84);
   cv.print(F(FW_VERSION));
   push();
 
-  Serial.println(F("[tft] ST7789 320x240 initialised, 128x160 UI centred"));
+  Serial.println(F("[tft] ST7789 320x240 initialised, UI doubled to fill the glass"));
   return true;
 }
 

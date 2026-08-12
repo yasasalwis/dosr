@@ -27,12 +27,12 @@
 #define TFT_MISO_UNUSED (-1)
 
 // The fitted panel is the 2.0" ST7789 variant of the combo module: 240x320
-// native, 320x240 as mounted (landscape, encoder below the glass). The menu
-// is still rendered into the original 128x160 portrait canvas and centred on
-// the glass - a native 320x240 layout is a separate job. TFT_W/TFT_H are the
-// canvas, PANEL_W/PANEL_H the glass in its landscape rotation.
-static const int16_t TFT_W = 128;
-static const int16_t TFT_H = 160;
+// native, 320x240 as mounted (landscape, encoder below the glass). The UI is
+// rendered into a half-resolution 160x120 canvas and pixel-doubled onto the
+// glass in push() - see ui.cpp for why. TFT_W/TFT_H are the canvas,
+// PANEL_W/PANEL_H the glass in its landscape rotation.
+static const int16_t TFT_W = 160;
+static const int16_t TFT_H = 120;
 static const int16_t PANEL_W = 320;
 static const int16_t PANEL_H = 240;
 

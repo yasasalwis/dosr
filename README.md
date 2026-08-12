@@ -143,6 +143,29 @@ The display is SPI, not I²C. SPI has no acknowledge, so unlike the I²C parts
 there is no way to tell a wired display from an absent one — `ui.begin()`
 reports what it configured, not what answered.
 
+### If the display stays black
+
+Every entry here has produced "backlight on, screen black" on this exact
+build, roughly in order of how long each one took to find:
+
+- **A solder bridge on the module's pin header.** One blob across DC and a
+  neighbour defeats everything downstream — and continuity-testing the
+  jumper wires passes, because the short is on the PCB, not in the wires.
+  Inspect the header under a bright light before suspecting anything else.
+- **SCL/SDA on the wrong pads.** The module's SCL/SDA silkscreen means SPI
+  SCK/MOSI. They go to **D8 and D10** — not to D4/D5, whose XIAO pinout
+  labels (SDA/SCL) invite exactly that mistake.
+- **RES left floating.** The firmware never drives reset (the constructor
+  passes `-1`), so RES must be tied to 3V3 or the panel can sit in reset
+  forever, backlit and blank.
+- **Power that only feeds the backlight.** No glow at all means VDD/BLK/GND;
+  a glow with dead logic can mean a module whose onboard regulator wants
+  **5 V** on VDD — the backlight runs happily off 3.3 V while the panel
+  logic browns out. Look for a 3-pin regulator on the module.
+- **The wrong tab variant.** If the panel lights but the image is shifted,
+  mirrored or miscoloured, swap `INITR_BLACKTAB` for `INITR_GREENTAB` or
+  `INITR_REDTAB` in `src/ui.cpp` — one line, see the comment there.
+
 The DS18B20 needs a **4.7 kΩ pull-up from D9 to 3V3** — it is open-drain and
 nothing else holds that line high. Conversions run asynchronously at 12-bit
 resolution (0.0625 °C, 750 ms): `sensors.tick()` starts one, returns, and
@@ -214,6 +237,11 @@ stays in the sensor's own 0–5 V domain. If you later power the ADS1115 from
 6. Set modes, setpoints, and rate limits.
 
 Set `ENCODER_ENABLED 0` in `include/config.h` while the encoder is unwired.
+
+Menu controls: rotate to move or adjust, short-press the knob to select, and
+**hold the knob for half a second to go back**. While editing a value, the
+first long press exits the edit; the next one leaves the screen. There is no
+on-screen back item — the long press is it.
 
 ## Calibrating a pump
 

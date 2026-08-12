@@ -222,7 +222,8 @@ colour) where the firmware drove an I²C SSD1306 (128×64, mono). What changed:
 | Reservoir float switch | 0–1 | optional, `cfg.floatEnabled`, `cfg.floatActiveLow` |
 | USB-TTL serial adapter | 0–1 | 3.3 V, to **D6 (TX) only**, VCC disconnected |
 
-D7 is Pump 2's gate, so there is no UART0 RX — the debug port is listen-only.
+D7 carries the TFT's DC line, so there is no UART0 RX — the debug port is
+listen-only.
 Arduino `Serial` goes over USB-C by default (`ARDUINO_USB_CDC_ON_BOOT=1`).
 
 ---

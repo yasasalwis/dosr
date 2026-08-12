@@ -27,6 +27,12 @@ static const char* resetReasonText(esp_reset_reason_t r) {
     case ESP_RST_WDT:      return "other watchdog";
     case ESP_RST_BROWNOUT: return "BROWNOUT - check your supply";
     case ESP_RST_DEEPSLEEP: return "deep sleep wake";
+    case ESP_RST_SDIO:     return "SDIO";
+    case ESP_RST_USB:      return "USB peripheral";
+    case ESP_RST_JTAG:     return "JTAG";
+    case ESP_RST_EFUSE:    return "efuse error";
+    case ESP_RST_PWR_GLITCH: return "POWER GLITCH - check your supply";
+    case ESP_RST_CPU_LOCKUP: return "CPU lockup";
     default:               return "unknown";
   }
 }
@@ -71,9 +77,10 @@ void setup() {
 
   esp_reset_reason_t rr = esp_reset_reason();
   Serial.printf("[boot] reset reason: %d (%s)\n", (int)rr, resetReasonText(rr));
-  if (rr == ESP_RST_BROWNOUT) {
+  if (rr == ESP_RST_BROWNOUT || rr == ESP_RST_PWR_GLITCH) {
     Serial.println(F("[boot] Supply sagged. Do not run USB and the buck"));
     Serial.println(F("[boot] converter into the 5V pin at the same time."));
+    Serial.println(F("[boot] On USB power alone, suspect the cable or port."));
   }
 
   // Must precede pumps.begin(), which reads cfg.floatActiveLow.

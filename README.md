@@ -311,8 +311,8 @@ you need in the normal case.
 When USB will not enumerate at all, which is exactly when you want the log,
 fall back to UART0: **TX on D6**. Wire a USB-TTL adapter's RX to D6 and its GND
 to the board's GND, leave its VCC disconnected, and open the port at 115200.
-There is no RX — D7 is pump 2's gate — so this is a listen-only channel, which
-is enough. The ROM and second-stage bootloader always log here regardless of
+There is no RX — D7 carries the TFT's DC line — so this is a listen-only
+channel, which is enough. The ROM and second-stage bootloader always log here regardless of
 the CDC setting.
 
 To move Arduino `Serial` itself to UART0 as well, set

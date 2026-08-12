@@ -191,9 +191,10 @@ through the Arduino API instead.
 
 > **Update, first hardware bring-up:** the delivered module is the **2.0″
 > ST7789 (240×320)** variant of the same combo family, not the 1.8″ ST7735.
-> `ui.cpp` initialises the ST7789 and centres the existing 128×160 UI on the
-> glass; a native 320×240 layout remains future work. The section below is
-> kept as the history of the SSD1306→TFT rewrite.
+> `ui.cpp` initialises the ST7789 and renders the UI into a 160×120 canvas
+> pixel-doubled to fill the glass: landscape layout, side-by-side readings,
+> nine 22 px menu rows, and a `< Back` row in every submenu. The section
+> below is kept as the history of the SSD1306→TFT rewrite.
 
 **1.8″ TFT — `ui.cpp` rewritten.** It is an SPI ST7735 (128×160, 16-bit
 colour) where the firmware drove an I²C SSD1306 (128×64, mono). What changed:

@@ -244,8 +244,9 @@ Set `ENCODER_ENABLED 0` in `include/config.h` while the encoder is unwired.
 
 Menu controls: rotate to move or adjust, short-press the knob to select, and
 **hold the knob for half a second to go back**. While editing a value, the
-first long press exits the edit; the next one leaves the screen. There is no
-on-screen back item — the long press is it.
+first long press exits the edit; the next one leaves the screen. Every
+submenu also ends with a `< Back` row, so the long press is the shortcut,
+not the only way out.
 
 ## Calibrating a pump
 

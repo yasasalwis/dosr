@@ -10,7 +10,7 @@ public:
   void setPaused(bool p);
   bool paused() const { return _paused; }
 
-  // Human-readable one-liner for the OLED status row and the web UI.
+  // Human-readable one-liner for the display status row and the web UI.
   const char* statusText() const { return _status; }
 
   uint32_t nextScheduledIn(uint8_t idx) const;  // seconds, 0 if not scheduled

@@ -12,7 +12,7 @@ so `#include "pumps.h"` resolves from anywhere in the project.
 | `pumps.h` | Dose queue, rate limiting, `DoseResult` reasons |
 | `sensors.h` | ADS1115 sampling, pH/EC conversion and calibration |
 | `control.h` | Scheduled and closed-loop dosing decisions |
-| `ui.h` | OLED menu and rotary encoder |
+| `ui.h` | TFT menu and rotary encoder |
 | `net.h` | WiFi, HTTP API, MQTT |
 | `webpage.h` | The single-page web panel, as a `PROGMEM` string |
 

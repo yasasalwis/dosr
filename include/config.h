@@ -81,9 +81,11 @@ static const uint16_t SETTLE_MIN_SEC    = 2;
 #define ENCODER_ENABLED 1
 
 // If the ISR fires more often than this per second the encoder is treated as
-// unwired or noisy and the interrupts are detached rather than left to
-// lock up the board.
-static const uint32_t ENC_ISR_STORM_PER_SEC = 4000;
+// unwired or noisy and the interrupts are detached rather than left to lock
+// up the board. A floating pin storms at tens of thousands per second; a
+// vigorous spin on a bouncy EC11 can reach ~10k, which is why this sits
+// above that rather than at the 4k it once was - real use tripped it.
+static const uint32_t ENC_ISR_STORM_PER_SEC = 12000;
 
 #define FW_VERSION "1.1.0"
 #define AP_FALLBACK_SSID "MiniFeeder-Setup"

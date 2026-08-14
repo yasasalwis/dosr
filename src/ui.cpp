@@ -93,10 +93,37 @@ static void IRAM_ATTR encIsr() {
 
 // A floating encoder input generates tens of thousands of interrupts per
 // second, which starves USB and WiFi and eventually trips the watchdog.
-// If that happens, drop the interrupts rather than let the board lock up.
+// Drop the interrupts rather than let the board lock up - but noise is
+// usually transient (an SPI burst, pump switching, a knocked wire, a fast
+// spin on bouncy contacts), so say so on screen and retry a few times
+// before giving up until reboot. The 1 s check window bounds each storm
+// episode; ten clean minutes forgive the strike count.
+static uint8_t  encStorms   = 0;
+static uint16_t encCleanSec = 0;
+static uint32_t encRetryAt  = 0;
+static const uint8_t  ENC_STORM_MAX_STRIKES = 5;
+static const uint32_t ENC_RETRY_MS          = 5000;
+
 static void encStormCheck() {
-  if (!encAttached) return;
   static uint32_t window = 0;
+
+  if (!encAttached) {
+    if (encRetryAt && (int32_t)(millis() - encRetryAt) >= 0) {
+      encRetryAt = 0;
+      noInterrupts();
+      encIsrHits = 0;
+      encAccum   = 0;
+      interrupts();
+      encState = (uint8_t)((digitalRead(PIN_ENC_A) << 1) | digitalRead(PIN_ENC_B));
+      attachInterrupt(digitalPinToInterrupt(PIN_ENC_A), encIsr, CHANGE);
+      attachInterrupt(digitalPinToInterrupt(PIN_ENC_B), encIsr, CHANGE);
+      encAttached = true;
+      window = millis();
+      Serial.println(F("[enc] retrying encoder interrupts"));
+    }
+    return;
+  }
+
   if (millis() - window < 1000) return;
   window = millis();
 
@@ -105,14 +132,26 @@ static void encStormCheck() {
   encIsrHits = 0;
   interrupts();
 
-  if (hits > ENC_ISR_STORM_PER_SEC) {
-    detachInterrupt(digitalPinToInterrupt(PIN_ENC_A));
-    detachInterrupt(digitalPinToInterrupt(PIN_ENC_B));
-    encAttached = false;
-    Serial.printf("[enc] %lu interrupts in 1 s - encoder disabled.\n",
-                  (unsigned long)hits);
-    Serial.println(F("[enc] Pins D1/D2 are floating or noisy. Check wiring,"));
-    Serial.println(F("[enc] or set ENCODER_ENABLED 0 in config.h."));
+  if (hits <= ENC_ISR_STORM_PER_SEC) {
+    if (encStorms && ++encCleanSec >= 600) { encStorms = 0; encCleanSec = 0; }
+    return;
+  }
+
+  detachInterrupt(digitalPinToInterrupt(PIN_ENC_A));
+  detachInterrupt(digitalPinToInterrupt(PIN_ENC_B));
+  encAttached = false;
+  encCleanSec = 0;
+  Serial.printf("[enc] %lu interrupts in 1 s - encoder detached.\n",
+                (unsigned long)hits);
+  Serial.println(F("[enc] Pins D1/D2 are floating or noisy. Check wiring,"));
+  Serial.println(F("[enc] or set ENCODER_ENABLED 0 in config.h."));
+  if (++encStorms < ENC_STORM_MAX_STRIKES) {
+    encRetryAt = millis() + ENC_RETRY_MS;
+    ui.toast("Encoder noise - retry");
+  } else {
+    encRetryAt = 0;
+    ui.toast("Encoder off - rewire");
+    Serial.println(F("[enc] too many storms - giving up until reboot."));
   }
 }
 

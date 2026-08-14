@@ -1,0 +1,318 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1700 1190" font-family="'Courier New',monospace">
+<rect x="0" y="0" width="1700" height="1190" fill="#ffffff"/>
+<text x="850" y="26" text-anchor="middle" font-size="19" font-weight="bold" fill="#111">Mini Feeder — carrier PCB, one-sheet schematic reference (companion to pcb-schematic.md)</text>
+<text x="850" y="44" text-anchor="middle" font-size="12" fill="#555">Net names in CAPITALS are net labels — connect same-named pins in EasyEDA; wires are only drawn inside each block</text>
+
+<!-- ============ PANEL 1 : POWER ============ -->
+<rect x="20" y="60" width="520" height="520" fill="none" stroke="#111" stroke-width="1.5"/>
+<text x="30" y="80" font-size="15" font-weight="bold" fill="#111">1 · POWER  12V → 5V → 3V3P</text>
+
+<!-- J1 jack -->
+<rect x="35" y="120" width="70" height="60" fill="none" stroke="#111"/>
+<text x="42" y="138" font-size="12" fill="#111">J1</text>
+<text x="42" y="152" font-size="11" fill="#111">DC-005</text>
+<text x="42" y="166" font-size="11" fill="#111">12V IN</text>
+<line x1="105" y1="135" x2="150" y2="135" stroke="#111" stroke-width="1.5"/>
+<line x1="105" y1="170" x2="130" y2="170" stroke="#111" stroke-width="1.5"/>
+<line x1="130" y1="170" x2="130" y2="540" stroke="#111" stroke-width="1.5"/>
+
+<!-- D1 series diode -->
+<polygon points="150,127 150,143 166,135" fill="none" stroke="#111" stroke-width="1.5"/>
+<line x1="166" y1="127" x2="166" y2="143" stroke="#111" stroke-width="2"/>
+<text x="140" y="118" font-size="11" fill="#111">D1 SS54 (rev.pol)</text>
+<line x1="166" y1="135" x2="510" y2="135" stroke="#111" stroke-width="1.5"/>
+<text x="440" y="128" font-size="12" font-weight="bold" fill="#111">+12V</text>
+
+<!-- C1 bulk -->
+<line x1="210" y1="135" x2="210" y2="165" stroke="#111" stroke-width="1.5"/>
+<line x1="196" y1="165" x2="224" y2="165" stroke="#111" stroke-width="2"/>
+<line x1="196" y1="173" x2="224" y2="173" stroke="#111" stroke-width="2"/>
+<line x1="210" y1="173" x2="210" y2="540" stroke="#111" stroke-width="1.5"/>
+<text x="228" y="163" font-size="11" fill="#111">C1 470–1000u/25V +</text>
+<circle cx="210" cy="135" r="3" fill="#111"/>
+
+<!-- U1 LM2596 -->
+<rect x="250" y="185" width="150" height="110" fill="none" stroke="#111" stroke-width="1.5"/>
+<text x="258" y="203" font-size="12" font-weight="bold" fill="#111">U1 LM2596S-5.0</text>
+<text x="258" y="217" font-size="10" fill="#555">TO-263-5</text>
+<line x1="280" y1="135" x2="280" y2="185" stroke="#111" stroke-width="1.5"/>
+<circle cx="280" cy="135" r="3" fill="#111"/>
+<text x="258" y="235" font-size="11" fill="#111">1 VIN</text>
+<text x="258" y="253" font-size="11" fill="#111">5 ON̅ → GND</text>
+<text x="258" y="271" font-size="11" fill="#111">3 GND</text>
+<text x="345" y="235" font-size="11" fill="#111">2 SW</text>
+<text x="345" y="253" font-size="11" fill="#111">4 FB</text>
+<!-- C3 at VIN -->
+<line x1="240" y1="160" x2="280" y2="160" stroke="#111" stroke-width="1"/>
+<text x="150" y="200" font-size="11" fill="#111">C3 100u/25V</text>
+<line x1="240" y1="160" x2="240" y2="540" stroke="#111" stroke-width="1"/>
+<circle cx="280" cy="160" r="2.5" fill="#111"/>
+<!-- SW -> L1 -> +5V -->
+<line x1="400" y1="230" x2="430" y2="230" stroke="#111" stroke-width="1.5"/>
+<path d="M430,230 a8,8 0 0 1 16,0 a8,8 0 0 1 16,0 a8,8 0 0 1 16,0" fill="none" stroke="#111" stroke-width="1.5"/>
+<text x="428" y="216" font-size="11" fill="#111">L1 33uH ≥3A</text>
+<line x1="478" y1="230" x2="510" y2="230" stroke="#111" stroke-width="1.5"/>
+<text x="452" y="250" font-size="12" font-weight="bold" fill="#111">+5V</text>
+<!-- D2 catch -->
+<line x1="415" y1="230" x2="415" y2="250" stroke="#111" stroke-width="1.5"/>
+<circle cx="415" cy="230" r="2.5" fill="#111"/>
+<polygon points="407,266 423,266 415,250" fill="none" stroke="#111" stroke-width="1.5"/>
+<line x1="407" y1="250" x2="423" y2="250" stroke="#111" stroke-width="2"/>
+<line x1="415" y1="266" x2="415" y2="540" stroke="#111" stroke-width="1.5"/>
+<text x="300" y="316" font-size="11" fill="#111">D2 SS54 catch (cathode to SW)</text>
+<!-- FB tie -->
+<line x1="400" y1="248" x2="490" y2="248" stroke="#111" stroke-width="1"/>
+<line x1="490" y1="248" x2="490" y2="230" stroke="#111" stroke-width="1"/>
+<circle cx="490" cy="230" r="2.5" fill="#111"/>
+<!-- C4 -->
+<line x1="500" y1="230" x2="500" y2="330" stroke="#111" stroke-width="1"/>
+<circle cx="500" cy="230" r="2.5" fill="#111"/>
+<line x1="486" y1="330" x2="514" y2="330" stroke="#111" stroke-width="2"/>
+<line x1="486" y1="338" x2="514" y2="338" stroke="#111" stroke-width="2"/>
+<line x1="500" y1="338" x2="500" y2="540" stroke="#111" stroke-width="1"/>
+<text x="392" y="352" font-size="11" fill="#111">C4 330–470u/16V +</text>
+
+<!-- +5V branches -->
+<text x="35" y="400" font-size="12" font-weight="bold" fill="#111">+5V branches:</text>
+<text x="35" y="420" font-size="11" fill="#111">→ D3 SS34 ─▶│─ XIAO 5V pin   (USB + PSU now safe together)</text>
+<text x="35" y="438" font-size="11" fill="#111">→ J3 pin1 / J4 pin1  (pH and EC modules)</text>
+<text x="35" y="456" font-size="11" fill="#111">→ SJ1 alternate position (display VDD)</text>
+<text x="35" y="474" font-size="11" fill="#111">→ R1 2k2 → LED1 → GND  (power LED)</text>
+<text x="35" y="500" font-size="11" fill="#111">→ U2 AMS1117-3.3: IN=+5V  OUT=+3V3P  GND</text>
+<text x="52" y="518" font-size="11" fill="#111">C5 10u at IN, C6 22u at OUT</text>
+<text x="330" y="500" font-size="12" font-weight="bold" fill="#111">+3V3P = peripheral rail</text>
+<text x="330" y="516" font-size="10" fill="#555">XIAO 3V3 pin stays UNCONNECTED</text>
+
+<!-- GND rail -->
+<line x1="35" y1="540" x2="520" y2="540" stroke="#111" stroke-width="2"/>
+<text x="470" y="558" font-size="12" font-weight="bold" fill="#111">GND</text>
+
+<!-- ============ PANEL 2 : XIAO + DISPLAY ============ -->
+<rect x="560" y="60" width="540" height="520" fill="none" stroke="#111" stroke-width="1.5"/>
+<text x="570" y="80" font-size="15" font-weight="bold" fill="#111">2 · XIAO SOCKET (U3) + DISPLAY HEADER (J2)</text>
+
+<rect x="590" y="100" width="180" height="420" fill="none" stroke="#111" stroke-width="1.5"/>
+<text x="612" y="120" font-size="12" font-weight="bold" fill="#111">U3 XIAO ESP32-C5</text>
+<text x="612" y="134" font-size="10" fill="#555">2 × 7-pin female header</text>
+<!-- left pins -->
+<text x="598" y="160" font-size="11" fill="#111">D0/G1  ← ENC_SW</text>
+<text x="598" y="182" font-size="11" fill="#111">D1/G0  ← ENC_A</text>
+<text x="598" y="204" font-size="11" fill="#111">D2/G25 ← ENC_B</text>
+<text x="598" y="226" font-size="11" fill="#111">D3/G7  → TFT_CS</text>
+<text x="598" y="248" font-size="11" fill="#111">D4/G23 ↔ I2C_SDA</text>
+<text x="598" y="270" font-size="11" fill="#111">D5/G24 → I2C_SCL</text>
+<text x="598" y="292" font-size="11" fill="#111">D6/G11 → DBG_TX</text>
+<text x="598" y="322" font-size="11" fill="#111">D7/G12 → TFT_DC</text>
+<text x="598" y="344" font-size="11" fill="#111">D8/G8  → TFT_SCK</text>
+<text x="598" y="366" font-size="11" fill="#111">D9/G9  ↔ ONEWIRE</text>
+<text x="598" y="388" font-size="11" fill="#111">D10/G10→ TFT_MOSI</text>
+<text x="598" y="424" font-size="11" fill="#111">5V ← via D3 SS34</text>
+<text x="598" y="446" font-size="11" fill="#111">GND</text>
+<text x="598" y="468" font-size="11" fill="#111">3V3 — NC (test pt)</text>
+
+<rect x="840" y="100" width="240" height="420" fill="none" stroke="#111" stroke-width="1.5"/>
+<text x="850" y="120" font-size="12" font-weight="bold" fill="#111">J2 display+encoder module</text>
+<text x="850" y="134" font-size="10" fill="#555">12-pin 2.54 female, pin 1 = GND</text>
+<text x="850" y="160" font-size="11" fill="#111"> 1 GND   → GND</text>
+<text x="850" y="182" font-size="11" fill="#111"> 2 VDD   → SJ1: +3V3P│+5V</text>
+<text x="850" y="204" font-size="11" fill="#111"> 3 SCL   → TFT_SCK  (SPI!)</text>
+<text x="850" y="226" font-size="11" fill="#111"> 4 SDA   → TFT_MOSI (SPI!)</text>
+<text x="850" y="248" font-size="11" fill="#111"> 5 RES   → R2 10k → +3V3P</text>
+<text x="850" y="270" font-size="11" fill="#111"> 6 DC    → TFT_DC</text>
+<text x="850" y="292" font-size="11" fill="#111"> 7 CS    → TFT_CS</text>
+<text x="850" y="314" font-size="11" fill="#111"> 8 BLK   → +3V3P</text>
+<text x="850" y="336" font-size="11" fill="#111"> 9 TRA   → ENC_A  ┐ RC net,</text>
+<text x="850" y="358" font-size="11" fill="#111">10 TRB   → ENC_B  ┤ see</text>
+<text x="850" y="380" font-size="11" fill="#111">11 PSH   → ENC_SW ┘ block 6</text>
+<text x="850" y="402" font-size="11" fill="#111">12 KO    → SJ2 → GND (open)</text>
+<text x="850" y="440" font-size="10" fill="#555">Panel: 2.0" ST7789 240×320.</text>
+<text x="850" y="454" font-size="10" fill="#555">Module SCL/SDA are SPI SCK/MOSI —</text>
+<text x="850" y="468" font-size="10" fill="#555">never route them to I2C_SDA/SCL.</text>
+<text x="850" y="496" font-size="10" fill="#555">USB-C on the XIAO stays reachable.</text>
+
+<!-- ============ PANEL 3 : I2C CHIPS ============ -->
+<rect x="1120" y="60" width="560" height="520" fill="none" stroke="#111" stroke-width="1.5"/>
+<text x="1130" y="80" font-size="15" font-weight="bold" fill="#111">3 · I²C — MCP23017 + ADS1115 (bare chips)</text>
+
+<text x="1130" y="104" font-size="11" fill="#111">Bus pull-ups (one pair total): R6 4k7  I2C_SDA→+3V3P · R7 4k7  I2C_SCL→+3V3P</text>
+
+<rect x="1130" y="120" width="260" height="330" fill="none" stroke="#111" stroke-width="1.5"/>
+<text x="1140" y="140" font-size="12" font-weight="bold" fill="#111">U4 MCP23017-E/SO @0x20</text>
+<text x="1140" y="154" font-size="10" fill="#555">SOIC-28W</text>
+<text x="1140" y="178" font-size="11" fill="#111">13 SDA ↔ I2C_SDA</text>
+<text x="1140" y="196" font-size="11" fill="#111">12 SCL ← I2C_SCL</text>
+<text x="1140" y="214" font-size="11" fill="#111">15,16,17 A0-A2 → GND</text>
+<text x="1140" y="232" font-size="11" fill="#111">18 RESET → R8 10k → +3V3P</text>
+<text x="1140" y="248" font-size="10" font-weight="bold" fill="#111">   (mandatory — floats = dead chip)</text>
+<text x="1140" y="270" font-size="11" fill="#111"> 9 VDD → +3V3P + C10 100n</text>
+<text x="1140" y="288" font-size="11" fill="#111">10 VSS → GND</text>
+<text x="1140" y="312" font-size="11" fill="#111">21 GPA0 → GATE1</text>
+<text x="1140" y="330" font-size="11" fill="#111">22 GPA1 → GATE2</text>
+<text x="1140" y="348" font-size="11" fill="#111">23 GPA2 → GATE3</text>
+<text x="1140" y="366" font-size="11" fill="#111">24 GPA3 → GATE4</text>
+<text x="1140" y="384" font-size="11" fill="#111"> 1 GPB0 ← FLOAT (J7.1; J7.2=GND)</text>
+<text x="1140" y="402" font-size="11" fill="#111">19,20 INT / 25-28, 2-8 → NC</text>
+<text x="1140" y="430" font-size="10" fill="#555">Wakes all-input (high-Z) — the 100k</text>
+<text x="1140" y="444" font-size="10" fill="#555">gate pull-downs hold pumps off at boot.</text>
+
+<rect x="1410" y="120" width="255" height="290" fill="none" stroke="#111" stroke-width="1.5"/>
+<text x="1420" y="140" font-size="12" font-weight="bold" fill="#111">U5 ADS1115IDGS @0x48</text>
+<text x="1420" y="154" font-size="10" fill="#555">MSOP-10</text>
+<text x="1420" y="178" font-size="11" fill="#111"> 1 ADDR → GND</text>
+<text x="1420" y="196" font-size="11" fill="#111"> 2 ALERT → NC</text>
+<text x="1420" y="214" font-size="11" fill="#111"> 3 GND → GND</text>
+<text x="1420" y="232" font-size="11" fill="#111"> 4 AIN0 ← PH_DIV</text>
+<text x="1420" y="250" font-size="11" fill="#111"> 5 AIN1 ← EC_DIV</text>
+<text x="1420" y="268" font-size="11" fill="#111"> 6,7 AIN2,AIN3 → GND</text>
+<text x="1420" y="286" font-size="11" fill="#111"> 8 VDD → +3V3P + C11 100n</text>
+<text x="1420" y="304" font-size="11" fill="#111"> 9 SDA ↔ I2C_SDA</text>
+<text x="1420" y="322" font-size="11" fill="#111">10 SCL ← I2C_SCL</text>
+<text x="1420" y="350" font-size="10" fill="#555">Runs at 3V3 — dividers below keep</text>
+<text x="1420" y="364" font-size="10" fill="#555">the 0–5V sensor swing in range.</text>
+
+<!-- ============ PANEL 4 : ANALOG ============ -->
+<rect x="20" y="600" width="520" height="520" fill="none" stroke="#111" stroke-width="1.5"/>
+<text x="30" y="620" font-size="15" font-weight="bold" fill="#111">4 · ANALOG FRONT END + 1-WIRE</text>
+
+<rect x="35" y="640" width="90" height="70" fill="none" stroke="#111"/>
+<text x="42" y="658" font-size="11" fill="#111">J3 pH</text>
+<text x="42" y="672" font-size="10" fill="#111">1 +5V</text>
+<text x="42" y="686" font-size="10" fill="#111">2 GND</text>
+<text x="42" y="700" font-size="10" fill="#111">3 OUT</text>
+<line x1="125" y1="696" x2="160" y2="696" stroke="#111" stroke-width="1.5"/>
+<rect x="160" y="690" width="44" height="13" fill="none" stroke="#111" stroke-width="1.5"/>
+<text x="160" y="684" font-size="10" fill="#111">R9 10k 1%</text>
+<line x1="204" y1="696" x2="300" y2="696" stroke="#111" stroke-width="1.5"/>
+<circle cx="250" cy="696" r="3" fill="#111"/>
+<rect x="243" y="710" width="14" height="40" fill="none" stroke="#111" stroke-width="1.5"/>
+<text x="262" y="732" font-size="10" fill="#111">R10 10k 1%</text>
+<line x1="250" y1="696" x2="250" y2="710" stroke="#111" stroke-width="1.5"/>
+<line x1="250" y1="750" x2="250" y2="770" stroke="#111" stroke-width="1.5"/>
+<line x1="236" y1="770" x2="264" y2="770" stroke="#111" stroke-width="2"/>
+<line x1="242" y1="775" x2="258" y2="775" stroke="#111" stroke-width="1.5"/>
+<line x1="247" y1="780" x2="253" y2="780" stroke="#111" stroke-width="1"/>
+<!-- C12 -->
+<line x1="290" y1="696" x2="290" y2="720" stroke="#111" stroke-width="1"/>
+<circle cx="290" cy="696" r="2.5" fill="#111"/>
+<line x1="278" y1="720" x2="302" y2="720" stroke="#111" stroke-width="2"/>
+<line x1="278" y1="727" x2="302" y2="727" stroke="#111" stroke-width="2"/>
+<line x1="290" y1="727" x2="290" y2="745" stroke="#111" stroke-width="1"/>
+<line x1="278" y1="745" x2="302" y2="745" stroke="#111" stroke-width="2"/>
+<line x1="284" y1="750" x2="296" y2="750" stroke="#111" stroke-width="1.5"/>
+<text x="306" y="726" font-size="10" fill="#111">C12 100n</text>
+<line x1="300" y1="696" x2="360" y2="696" stroke="#111" stroke-width="1.5"/>
+<text x="364" y="700" font-size="11" font-weight="bold" fill="#111">PH_DIV → U5 AIN0</text>
+
+<text x="35" y="810" font-size="11" fill="#111">J4 EC module: identical network — R11/R12 10k 1%, C13 100n → EC_DIV → U5 AIN1</text>
+<text x="35" y="830" font-size="10" fill="#555">2:1 divider matches ADC_DIVIDER_RATIO = 2.0 in config.h; RC corner ≈ 300 Hz.</text>
+
+<rect x="35" y="870" width="110" height="80" fill="none" stroke="#111"/>
+<text x="42" y="888" font-size="11" fill="#111">J5 DS18B20</text>
+<text x="42" y="904" font-size="10" fill="#111">1 +3V3P</text>
+<text x="42" y="918" font-size="10" fill="#111">2 DQ</text>
+<text x="42" y="932" font-size="10" fill="#111">3 GND</text>
+<line x1="145" y1="914" x2="240" y2="914" stroke="#111" stroke-width="1.5"/>
+<text x="244" y="918" font-size="11" font-weight="bold" fill="#111">ONEWIRE → D9</text>
+<circle cx="190" cy="914" r="3" fill="#111"/>
+<rect x="183" y="860" width="14" height="40" fill="none" stroke="#111" stroke-width="1.5"/>
+<line x1="190" y1="900" x2="190" y2="914" stroke="#111" stroke-width="1.5"/>
+<line x1="190" y1="845" x2="190" y2="860" stroke="#111" stroke-width="1.5"/>
+<text x="204" y="878" font-size="10" fill="#111">R13 4k7</text>
+<text x="170" y="838" font-size="10" fill="#111">+3V3P</text>
+<text x="35" y="985" font-size="10" fill="#555">Sensor modules stay external (BNC + trimmers); they plug in and run from +5V.</text>
+<text x="35" y="1003" font-size="10" fill="#555">Keep this corner of the board away from pump return current — layout rule #1.</text>
+
+<!-- ============ PANEL 5 : PUMP DRIVER ============ -->
+<rect x="560" y="600" width="540" height="520" fill="none" stroke="#111" stroke-width="1.5"/>
+<text x="570" y="620" font-size="15" font-weight="bold" fill="#111">5 · PUMP DRIVER — one of four identical channels</text>
+
+<text x="580" y="660" font-size="11" fill="#111">GATEn (U4 GPAn)</text>
+<line x1="700" y1="656" x2="730" y2="656" stroke="#111" stroke-width="1.5"/>
+<rect x="730" y="649" width="44" height="13" fill="none" stroke="#111" stroke-width="1.5"/>
+<text x="732" y="644" font-size="10" fill="#111">100R</text>
+<line x1="774" y1="656" x2="850" y2="656" stroke="#111" stroke-width="1.5"/>
+<circle cx="800" cy="656" r="3" fill="#111"/>
+<!-- 100k pulldown -->
+<rect x="793" y="680" width="14" height="44" fill="none" stroke="#111" stroke-width="1.5"/>
+<line x1="800" y1="656" x2="800" y2="680" stroke="#111" stroke-width="1.5"/>
+<line x1="800" y1="724" x2="800" y2="760" stroke="#111" stroke-width="1.5"/>
+<text x="814" y="706" font-size="10" fill="#111">100k</text>
+<line x1="786" y1="760" x2="814" y2="760" stroke="#111" stroke-width="2"/>
+<line x1="792" y1="765" x2="808" y2="765" stroke="#111" stroke-width="1.5"/>
+<line x1="797" y1="770" x2="803" y2="770" stroke="#111" stroke-width="1"/>
+<!-- MOSFET -->
+<rect x="850" y="620" width="120" height="90" fill="none" stroke="#111" stroke-width="1.5"/>
+<text x="858" y="640" font-size="12" font-weight="bold" fill="#111">Qn AO3400A</text>
+<text x="858" y="656" font-size="11" fill="#111">G ← gate</text>
+<text x="858" y="672" font-size="11" fill="#111">D → pump −</text>
+<text x="858" y="688" font-size="11" fill="#111">S → GND</text>
+<line x1="910" y1="710" x2="910" y2="740" stroke="#111" stroke-width="1.5"/>
+<line x1="896" y1="740" x2="924" y2="740" stroke="#111" stroke-width="2"/>
+<line x1="902" y1="745" x2="918" y2="745" stroke="#111" stroke-width="1.5"/>
+<line x1="907" y1="750" x2="913" y2="750" stroke="#111" stroke-width="1"/>
+<!-- pump connector + flyback -->
+<rect x="1010" y="600" width="80" height="90" fill="none" stroke="#111"/>
+<text x="1018" y="618" font-size="11" fill="#111">J6n pump</text>
+<text x="1018" y="634" font-size="10" fill="#111">1 +12V</text>
+<text x="1018" y="650" font-size="10" fill="#111">2 drain</text>
+<line x1="970" y1="668" x2="1010" y2="668" stroke="#111" stroke-width="1.5"/>
+<text x="948" y="662" font-size="10" fill="#111">D</text>
+<!-- flyback -->
+<line x1="990" y1="630" x2="1010" y2="630" stroke="#111" stroke-width="1.5"/>
+<line x1="990" y1="630" x2="990" y2="640" stroke="#111" stroke-width="1.5"/>
+<polygon points="982,656 998,656 990,640" fill="none" stroke="#111" stroke-width="1.5"/>
+<line x1="982" y1="640" x2="998" y2="640" stroke="#111" stroke-width="2"/>
+<line x1="990" y1="656" x2="990" y2="668" stroke="#111" stroke-width="1.5"/>
+<circle cx="990" cy="668" r="2.5" fill="#111"/>
+<text x="880" y="590" font-size="10" fill="#111">D4n SS34 flyback, cathode → +12V</text>
+
+<text x="580" y="810" font-size="11" font-weight="bold" fill="#111">×4: GATE1→J61 … GATE4→J64</text>
+<text x="580" y="836" font-size="11" fill="#111">Optional per channel: +12V → 2k2 → LED → drain  (lights while running)</text>
+<text x="580" y="878" font-size="11" font-weight="bold" fill="#111">Safety notes carried from the breadboard build:</text>
+<text x="580" y="898" font-size="10" fill="#111">· 100k pull-downs are what hold pumps off from reset until I²C is up — never omit</text>
+<text x="580" y="914" font-size="10" fill="#111">· Logic-level FETs only (AO3400A); an IRF540N will not turn on from 3.3 V</text>
+<text x="580" y="930" font-size="10" fill="#111">· One pump runs at a time (firmware queue) — 12 V traces sized for one motor + margin</text>
+<text x="580" y="946" font-size="10" fill="#111">· 12 V + pump traces ≥1.5 mm; pump return routes to C1/jack, not through the board</text>
+
+<!-- ============ PANEL 6 : ENCODER RC + DEBUG ============ -->
+<rect x="1120" y="600" width="560" height="520" fill="none" stroke="#111" stroke-width="1.5"/>
+<text x="1130" y="620" font-size="15" font-weight="bold" fill="#111">6 · ENCODER CONDITIONING (×3) + DEBUG</text>
+
+<text x="1140" y="656" font-size="11" fill="#111">J2 TRA</text>
+<line x1="1200" y1="652" x2="1360" y2="652" stroke="#111" stroke-width="1.5"/>
+<circle cx="1290" cy="652" r="3" fill="#111"/>
+<text x="1368" y="656" font-size="11" font-weight="bold" fill="#111">ENC_A → D1</text>
+<!-- pullup -->
+<rect x="1283" y="600" width="14" height="36" fill="none" stroke="#111" stroke-width="1.5"/>
+<line x1="1290" y1="636" x2="1290" y2="652" stroke="#111" stroke-width="1.5"/>
+<text x="1304" y="622" font-size="10" fill="#111">R3 10k → +3V3P</text>
+<!-- cap -->
+<line x1="1290" y1="652" x2="1290" y2="680" stroke="#111" stroke-width="1"/>
+<line x1="1278" y1="680" x2="1302" y2="680" stroke="#111" stroke-width="2"/>
+<line x1="1278" y1="687" x2="1302" y2="687" stroke="#111" stroke-width="2"/>
+<line x1="1290" y1="687" x2="1290" y2="706" stroke="#111" stroke-width="1"/>
+<line x1="1278" y1="706" x2="1302" y2="706" stroke="#111" stroke-width="2"/>
+<line x1="1284" y1="711" x2="1296" y2="711" stroke="#111" stroke-width="1.5"/>
+<text x="1306" y="690" font-size="10" fill="#111">C7 10n</text>
+
+<text x="1140" y="756" font-size="11" fill="#111">Identical for TRB → ENC_B (R4/C8) and PSH → ENC_SW (R5/C9).</text>
+<text x="1140" y="776" font-size="10" fill="#555">Place the RC at the XIAO end of the trace. This is the permanent fix for the</text>
+<text x="1140" y="790" font-size="10" fill="#555">encoder interrupt storms: stiff pull-ups + bounce/EMI filtering in copper.</text>
+
+<rect x="1140" y="830" width="150" height="70" fill="none" stroke="#111"/>
+<text x="1148" y="848" font-size="11" fill="#111">J8 debug UART</text>
+<text x="1148" y="864" font-size="10" fill="#111">1 DBG_TX (D6)</text>
+<text x="1148" y="878" font-size="10" fill="#111">2 GND · 3 NC</text>
+<text x="1300" y="856" font-size="10" fill="#555">Listen-only: ROM bootloader +</text>
+<text x="1300" y="870" font-size="10" fill="#555">firmware log here even when USB dies.</text>
+
+<text x="1140" y="940" font-size="11" font-weight="bold" fill="#111">Solder jumpers</text>
+<text x="1140" y="960" font-size="10" fill="#111">SJ1: display VDD = +3V3P (default) or +5V (regulator-equipped modules)</text>
+<text x="1140" y="976" font-size="10" fill="#111">SJ2: KO → GND, open by default (close if module uses KO as encoder common)</text>
+
+<text x="1140" y="1020" font-size="11" font-weight="bold" fill="#111">Board mechanics</text>
+<text x="1140" y="1040" font-size="10" fill="#111">M3 mounting holes ×4 · USB-C aperture clear · display header at board edge</text>
+<text x="1140" y="1056" font-size="10" fill="#111">Power block on one edge, analog on the opposite edge, MCU between.</text>
+
+<text x="850" y="1160" text-anchor="middle" font-size="11" fill="#555">Full pin tables, values, layout rules and the first-power-up checklist: docs/pcb-schematic.md · firmware needs zero changes — nets match include/config.h</text>
+</svg>

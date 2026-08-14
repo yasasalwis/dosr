@@ -1,5 +1,8 @@
 # Carrier PCB — schematic reference for EasyEDA
 
+*A one-sheet visual companion to this document lives next to it:
+`pcb-schematic.svg` — six blocks matching the sections below.*
+
 One board that everything plugs into: the XIAO ESP32-C5 in a socket, the
 2.0" TFT + encoder combo module on a 12-pin header, and screw/JST
 connectors for pumps, sensors and power. Everything that used to be a

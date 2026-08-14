@@ -229,6 +229,11 @@ stays in the sensor's own 0–5 V domain. If you later power the ADS1115 from
   sensor board shows up directly as noise on your pH reading.
 - 470–1000 µF across the 12 V rail near the FETs.
 
+All of the above — expander, ADC, MOSFET bank, dividers, pull-ups, 12 V→5 V
+buck — collapses onto one carrier board in `docs/pcb-schematic.md`: a full
+net-by-net schematic reference for EasyEDA, with the XIAO and the display
+module socketed and every bring-up lesson designed in.
+
 ## First run
 
 1. Power up. With no WiFi credentials stored, the board starts an access

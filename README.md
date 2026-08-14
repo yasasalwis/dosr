@@ -248,6 +248,14 @@ first long press exits the edit; the next one leaves the screen. Every
 submenu also ends with a `< Back` row, so the long press is the shortcut,
 not the only way out.
 
+If rotation stops working while the click still does, the firmware detached
+a storming encoder — a toast says so, serial prints the interrupt count, and
+it retries on its own every 5 s (five strikes and it stays off until
+reboot). A count in the tens of thousands means TRA/TRB is floating — a
+loose wire; a count near the threshold means induced noise — run the
+encoder jumpers away from the display's SPI wires, and if it persists add
+10 kΩ pull-ups to 3V3 and 10 nF to GND on both channels.
+
 ## Calibrating a pump
 
 Menu → Pumps → *(pump)* → Calibrate.

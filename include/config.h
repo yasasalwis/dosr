@@ -88,5 +88,5 @@ static const uint16_t SETTLE_MIN_SEC    = 2;
 static const uint32_t ENC_ISR_STORM_PER_SEC = 12000;
 
 #define FW_VERSION "1.1.0"
-#define AP_FALLBACK_SSID "MiniFeeder-Setup"
+#define AP_FALLBACK_SSID "DOSR-Setup"
 #define AP_FALLBACK_PASS "feedme1234"

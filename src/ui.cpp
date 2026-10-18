@@ -581,7 +581,7 @@ static void drawHome() {
   const Reading& r = sensors.last();
   char buf[24];
 
-  drawHeader("MINI FEEDER");
+  drawHeader("DOSR");
   if (settingsPendingSave()) {
     cv.setTextColor(C_ACT);
     cv.setCursor(TFT_W - 10, 4);
@@ -769,6 +769,12 @@ static void handleLong() {
 // ---------------------------------------------------------------------------
 // Public
 // ---------------------------------------------------------------------------
+// Centre one size-1 line on the canvas: 6px per character at that size.
+static void splashLine(const char* s, int16_t y) {
+  cv.setCursor((TFT_W - (int16_t)strlen(s) * 6) / 2, y);
+  cv.print(s);
+}
+
 bool Ui::begin() {
   pinMode(PIN_ENC_A, INPUT_PULLUP);
   pinMode(PIN_ENC_B, INPUT_PULLUP);
@@ -798,15 +804,19 @@ bool Ui::begin() {
 
   cv.fillScreen(C_BG);
   cv.setTextColor(C_INK);
-  cv.setTextSize(2);
-  cv.setCursor(8, 40);
-  cv.print(F("Mini"));
-  cv.setCursor(8, 60);
-  cv.print(F("Feeder"));
+  cv.setTextSize(3);
+  cv.setCursor((TFT_W - 72) / 2, 28);      // "DOSR" is 4 x 18px at size 3
+  cv.print(F("DOSR"));
+
+  // The tagline does not fit on one 160px line at size 1 (6px per character),
+  // so it is split rather than clipped.
   cv.setTextSize(1);
+  cv.setTextColor(C_INK);
+  splashLine("Open Source", 60);
+  splashLine("Agri Feeding System", 72);
+
   cv.setTextColor(C_DIM);
-  cv.setCursor(8, 84);
-  cv.print(F(FW_VERSION));
+  splashLine(FW_VERSION, 92);
   push();
 
   Serial.println(F("[tft] ST7789 320x240 initialised, UI doubled to fill the glass"));

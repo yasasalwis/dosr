@@ -8,7 +8,7 @@
 static const char PAGE_INDEX[] PROGMEM = R"HTML(<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mini Feeder</title>
+<title>DOSR</title>
 <style>
 :root{--bg:#12140f;--panel:#1c1f18;--line:#2e3327;--ink:#e8e6de;--dim:#8c9182;
 --ok:#8fbf4a;--act:#e0a82e;--bad:#c4553b;--r:10px}
@@ -43,7 +43,7 @@ button.stop{border-color:var(--bad);color:var(--bad)}
 .st{color:var(--act)}
 @media(prefers-reduced-motion:no-preference){.band u{transition:left .4s ease}}
 </style></head><body>
-<h1>Mini Feeder</h1>
+<h1>DOSR</h1>
 
 <div class="card">
   <div class="rd"><b id="ph">--</b><span>pH</span></div>

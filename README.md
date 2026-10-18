@@ -1,4 +1,4 @@
-# dosr — Mini Feeder
+# dosr — DOSR
 
 Four-channel 12 V dosing controller on a Seeed XIAO ESP32-C5, with a 2.0"
 colour TFT + rotary encoder menu, a phone-friendly web panel, and Home
@@ -232,7 +232,7 @@ stays in the sensor's own 0–5 V domain. If you later power the ADS1115 from
 ## First run
 
 1. Power up. With no WiFi credentials stored, the board starts an access
-   point: **MiniFeeder-Setup / feedme1234**. Join it and open
+   point: **DOSR-Setup / feedme1234**. Join it and open
    `http://192.168.4.1`.
 2. Enter your WiFi and MQTT details at the bottom of the page, save, reboot.
 3. Prime each pump (pump menu → *Prime 10s*) until the line is full of liquid.
@@ -331,13 +331,13 @@ There is no authentication. Keep this on a trusted VLAN.
 
 ## MQTT
 
-Base topic is `deviceName` (default `minifeeder`).
+Base topic is `deviceName` (default `dosr`).
 
-Published: `minifeeder/state` (JSON, every 5 s), `minifeeder/status`
+Published: `dosr/state` (JSON, every 5 s), `dosr/status`
 (`online`/`offline`, retained, also the LWT).
 
-Subscribed: `minifeeder/pump/<0-3>/dose` (payload = ml, empty for the
-configured dose), `minifeeder/pause` (`1`/`0`), `minifeeder/stop`.
+Subscribed: `dosr/pump/<0-3>/dose` (payload = ml, empty for the
+configured dose), `dosr/pause` (`1`/`0`), `dosr/stop`.
 
 Home Assistant discovery is published automatically on connect: pH, EC and
 temperature sensors, a status sensor, a dose button and a total-dosed sensor per pump,

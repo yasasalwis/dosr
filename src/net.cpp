@@ -251,7 +251,7 @@ static void mqttPublishDiscovery() {
   // Shared device block so everything lands under one Home Assistant device.
   char dev[200];
   snprintf(dev, sizeof(dev),
-    "\"dev\":{\"ids\":[\"%s\"],\"name\":\"Mini Feeder\",\"mf\":\"DIY\","
+    "\"dev\":{\"ids\":[\"%s\"],\"name\":\"DOSR\",\"mf\":\"DIY\","
     "\"mdl\":\"XIAO ESP32-C5\",\"sw\":\"%s\"},\"avty_t\":\"%s/status\"",
     dn, FW_VERSION, baseTopic);
 
@@ -441,7 +441,7 @@ static void wifiTick() {
 // ---------------------------------------------------------------------------
 void netBegin() {
   snprintf(baseTopic, sizeof(baseTopic), "%s",
-           cfg.deviceName[0] ? cfg.deviceName : "minifeeder");
+           cfg.deviceName[0] ? cfg.deviceName : "dosr");
 
   WiFi.setHostname(baseTopic);
   wifiTick();

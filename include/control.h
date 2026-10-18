@@ -24,6 +24,10 @@ private:
 
   void evalScheduled(uint8_t i);
   void evalAuto(uint8_t i);
+
+  bool autoWants(uint8_t i) const;                   // out of band, wants a dose
+  bool nextWait(uint8_t& idx, uint32_t& sec) const;  // soonest pump we wait on
+  void setWait(const char* what, uint32_t sec);
 };
 
 extern Control control;

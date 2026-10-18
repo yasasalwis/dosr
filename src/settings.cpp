@@ -49,7 +49,7 @@ void settingsDefaults() {
   cfg.floatActiveLow = true;
 
   cfg.mqttPort = 1883;
-  strlcpy(cfg.deviceName, "minifeeder", sizeof(cfg.deviceName));
+  strlcpy(cfg.deviceName, "dosr", sizeof(cfg.deviceName));
 }
 
 void settingsBegin() {

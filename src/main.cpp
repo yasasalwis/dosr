@@ -73,7 +73,7 @@ void setup() {
   uint32_t t0 = millis();
   while (!Serial && millis() - t0 < 1500) { delay(10); }
   Serial.println();
-  Serial.println(F("=== Mini Feeder " FW_VERSION " ==="));
+  Serial.println(F("=== DOSR " FW_VERSION " ==="));
 
   esp_reset_reason_t rr = esp_reset_reason();
   Serial.printf("[boot] reset reason: %d (%s)\n", (int)rr, resetReasonText(rr));
